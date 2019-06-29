@@ -9,14 +9,14 @@
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.1.0</AssemblyVersion>
+    <Version>1.1.1</Version>
     <PackageIconUrl>https://melonmesa.com/storage/dmisharp.png</PackageIconUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-    <PackageReleaseNotes>Refactored ingestion to maintain all metadata from a DMI file.</PackageReleaseNotes>
-    <FileVersion>1.1.0.0</FileVersion>
+    <PackageReleaseNotes>Added Travis CI configuration.</PackageReleaseNotes>
+    <FileVersion>1.1.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
