@@ -51,5 +51,14 @@ namespace DMISharpTests
                 Assert.Equal(16, file.States.Count());
             }
         }
+
+        [Fact]
+        public void SpaceDragonDMIStateCount()
+        {
+            using (var file = new DMIFile(@"Data/Input/spacedragon.dmi"))
+            {
+                Assert.Equal(2, file.States.Count());
+            }
+        }
     }
 }

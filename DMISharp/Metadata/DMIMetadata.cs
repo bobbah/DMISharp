@@ -19,6 +19,7 @@ namespace DMISharp.Metadata
         public int FrameWidth;
         public int FrameHeight;
         public IEnumerable<StateMetadata> States;
+        private Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI");
 
         /// <summary>
         /// Instantiates a DMIMetadata object from a file stream of that DMI file
@@ -30,7 +31,7 @@ namespace DMISharp.Metadata
             var data = GetDMIData(ImageMetadataReader.ReadMetadata(stream));
 
             // Failsafe for DMI format
-            if (data.Length > 0 && data[0] != "# BEGIN DMI")
+            if (data.Length > 0 && !_DMIStart.IsMatch(data[0]))
             {
                 throw new ArgumentException("Found PNG-zTXt directory, but failed to verify with '# BEGIN DMI' tag");
             }
