@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Bobbahbrown</Authors>
+    <Company>MelonMesa</Company>
+    <Description>Library for handling BYOND DMI files.</Description>
+    <Copyright>Copyright (c) 2019 MelonMesa</Copyright>
+    <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
+    <RepositoryUrl>github.com/bobbahbrown/DMISharp</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <Version>1.1.0</Version>
+    <PackageIconUrl>https://melonmesa.com/storage/dmisharp.png</PackageIconUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageTags>DMI BYOND SpaceStation13</PackageTags>
+    <PackageReleaseNotes>Refactored ingestion to maintain all metadata from a DMI file.</PackageReleaseNotes>
+    <FileVersion>1.1.0.0</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MetadataExtractor" Version="2.1.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0006" />
+  </ItemGroup>
+
+</Project>
