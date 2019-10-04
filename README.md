@@ -4,12 +4,6 @@
 DMISharp
 </h1>
 
-<div align="center">
-
-[![Build Status](https://travis-ci.com/bobbahbrown/DMISharp.svg?branch=master)](https://travis-ci.com/bobbahbrown/DMISharp)
-
-</div>
-
 ### **DMISharp** is a .NET Standard 2.0 library for easily interacting with the BYOND DMI file format.
 
 Developed with ease-of-use in mind, this library provides a simple means for importing, modifying, and exporting DMI files. Internally, images are handled using [ImageSharp](https://github.com/SixLabors/ImageSharp), a fantastic open-source library from SixLabors.
@@ -17,6 +11,7 @@ Developed with ease-of-use in mind, this library provides a simple means for imp
 ### Installation
 
 Install the current stable release from Nuget.
+
 [![NuGet](https://img.shields.io/nuget/v/DMISharp.svg)](https://www.nuget.org/packages/DMISharp/)
 
 ### Getting Started
