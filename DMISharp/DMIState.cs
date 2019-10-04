@@ -66,6 +66,8 @@ namespace DMISharp
             Data = new StateMetadata(name, directionDepth, frames);
             DirectionDepth = directionDepth;
             _Images = new Image<Rgba32>[(int)directionDepth][];
+            Width = frameWidth;
+            Height = frameHeight;
 
             for (int dir = 0; dir < Dirs; dir++)
             {
@@ -236,9 +238,10 @@ namespace DMISharp
             }
 
             // Delete old frame if necessary
-            if (_Images[(int)direction][frame] != newFrame)
+            var cursor = _Images[(int)direction][frame];
+            if (cursor != null && cursor != newFrame)
             {
-                _Images[(int)direction][frame].Dispose();
+                cursor.Dispose();
             }
             
             _Images[(int)direction][frame] = newFrame;

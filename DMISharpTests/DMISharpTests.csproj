@@ -35,6 +35,15 @@
     <None Update="Data\Input\misc.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Data\Input\SourceImages\sord.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\Input\SourceImages\sordvert.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\Input\SourceImages\steve32.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Data\Input\spacedragon.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
