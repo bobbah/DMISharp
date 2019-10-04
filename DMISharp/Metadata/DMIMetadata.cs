@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DMISharp.Metadata
@@ -13,13 +12,19 @@ namespace DMISharp.Metadata
     /// </summary>
     public class DMIMetadata
     {
-        public double Version; // BYOND version
-        public int Width; // File width
-        public int Height; // File height
-        public int FrameWidth;
-        public int FrameHeight;
-        public IEnumerable<StateMetadata> States;
+        public double Version { get; private set; } // BYOND version
+        public int FrameWidth { get; internal set; }
+        public int FrameHeight { get; internal set; }
+        public List<StateMetadata> States;
         private Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI");
+
+        public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
+        {
+            Version = byondVersion;
+            FrameWidth = frameWidth;
+            FrameHeight = frameHeight;
+            States = new List<StateMetadata>();
+        }
 
         /// <summary>
         /// Instantiates a DMIMetadata object from a file stream of that DMI file
@@ -159,7 +164,7 @@ namespace DMISharp.Metadata
         /// </summary>
         /// <param name="bodyData">The body metadata of the DMI file.</param>
         /// <returns>A collection of StateMetadata objects representing each state in the file.</returns>
-        private IEnumerable<StateMetadata> GetStateMetadata(List<string> bodyData)
+        private List<StateMetadata> GetStateMetadata(List<string> bodyData)
         {
             var toReturn = new List<StateMetadata>();
             var bodyLength = bodyData.Count();

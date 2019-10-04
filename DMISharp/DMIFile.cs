@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using SixLabors.ImageSharp;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using DMISharp.Metadata;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -19,8 +18,15 @@ namespace DMISharp
     public class DMIFile : IDisposable
     {
         public DMIMetadata Metadata { get; private set; }
-        public IEnumerable<DMIState> States { get; private set; }
+        private List<DMIState> _States { get; set; }
+        public IReadOnlyCollection<DMIState> States { get { return _States.AsReadOnly(); } }
         
+        public DMIFile(int frameWidth, int frameHeight)
+        {
+            Metadata = new DMIMetadata(4.0, frameWidth, frameHeight);
+            _States = new List<DMIState>();
+        }
+
         /// <summary>
         /// Initializes a new instance of a DMI File.
         /// </summary>
@@ -32,7 +38,7 @@ namespace DMISharp
 
             // Reset stream position for processing image data.
             stream.Seek(0, SeekOrigin.Begin);
-            States = GetStates(stream);
+            _States = GetStates(stream).ToList();
 
             stream.Dispose();
         }
@@ -46,15 +52,15 @@ namespace DMISharp
         {
 
         }
-        
+
         /// <summary>
         /// Saves a DMI File to a stream. The resulting file is .dmi-ready
         /// </summary>
         /// <param name="stream">The stream to save the DMI File to.</param>
-        public void Save(Stream stream)
+        /// <returns>True if the file was saved, false otherwise</returns>
+        public bool Save(Stream stream)
         {
-            var numStates = States.Count();
-            if (numStates == 0) return;
+            if (!CanSave()) return false;
 
             // prepare frames
             var frames = new List<Image>();
@@ -64,11 +70,11 @@ namespace DMISharp
                 {
                     for (int j = 0; j < state.Frames; j++)
                     {
-                        frames.Add(state.Images[i, j]);
+                        frames.Add(state.GetFrame((StateDirection)i, j));
                     }
                 }
             }
-            var numFrames = frames.Count();
+            var numFrames = frames.Count;
 
             // Get dimensions in frames
             var xFrames = Math.Max(1, (int)Math.Sqrt(numFrames));
@@ -91,18 +97,35 @@ namespace DMISharp
 
                 img.SaveAsPng(stream);
             }
+
+            return true;
         }
 
         /// <summary>
         /// Saves a DMI File to a specific file path.
         /// </summary>
         /// <param name="path">The path to save the image to.</param>
-        public void Save(string path)
+        /// <returns>True if the file was saved, false otherwise</returns>
+        public bool Save(string path)
         {
             using (var fs = File.OpenWrite(path))
             {
-                Save(fs);
+                return Save(fs);
             }
+        }
+
+        /// <summary>
+        /// Determines if a DMI file is ready to be saved
+        /// </summary>
+        /// <returns>True if the file is ready to be saved, otherwise false</returns>
+        public bool CanSave()
+        {
+            var result = States.Count != 0;
+            foreach (var state in States)
+            {
+                result = result && state.IsReadyForSave();
+            }
+            return result;
         }
 
         /// <summary>
@@ -131,7 +154,6 @@ namespace DMISharp
         /// <summary>
         /// Processes DMI metadata into DMI State objects.
         /// </summary>
-        /// <param name="data">The array of strings representing lines of a DMI metadata tag.</param>
         /// <param name="source">The stream containing the DMI file data.</param>
         /// <returns>An enumerable collection of DMI State objects representing the states of the DMI File.</returns>
         private IEnumerable<DMIState> GetStates(Stream source)
@@ -139,10 +161,7 @@ namespace DMISharp
             var states = new List<DMIState>();
 
             using (var img = Image.Load<Rgba32>(source))
-            {
-                Metadata.Height = img.Height;
-                Metadata.Width = img.Width;
-                
+            {              
                 // DMI data did not include widths or heights, assume that it is then
                 // perfect squares, thus we will determine the w/h programatically...
                 if (Metadata.FrameWidth == -1 || Metadata.FrameHeight == -1)
@@ -164,8 +183,8 @@ namespace DMISharp
                     return states;
                 }
 
-                int wFrames = (int)img.Width / Metadata.FrameWidth;
-                int hFrames = (int)img.Height / Metadata.FrameHeight;
+                int wFrames = img.Width / Metadata.FrameWidth;
+                int hFrames = img.Height / Metadata.FrameHeight;
                 int processedImages = 0;
                 int currWIndex = 0;
                 int currHIndex = 0;
@@ -173,7 +192,7 @@ namespace DMISharp
                 foreach (var state in Metadata.States)
                 {
                     var toAdd = new DMIState(state, img, currWIndex, wFrames, currHIndex, hFrames, Metadata.FrameWidth, Metadata.FrameHeight);
-                    processedImages += toAdd.Images.Length;
+                    processedImages += toAdd.TotalFrames;
                     currHIndex = processedImages / wFrames;
                     currWIndex = processedImages % wFrames;
                     states.Add(toAdd);
@@ -188,8 +207,8 @@ namespace DMISharp
         /// </summary>
         public void SortStates()
         {
-            States = States.OrderBy(x => x.Name);
-            Metadata.States = States.Select(x => x.Data);
+            _States = _States.OrderBy(x => x.Name).ToList();
+            Metadata.States = _States.Select(x => x.Data).ToList();
         }
 
         /// <summary>
@@ -198,8 +217,95 @@ namespace DMISharp
         /// <param name="comparer">The comparer to use</param>
         public void SortStates(IComparer<DMIState> comparer)
         {
-            States = States.OrderBy(x => x, comparer);
-            Metadata.States = States.Select(x => x.Data);
+            _States = _States.OrderBy(x => x, comparer).ToList();
+            Metadata.States = _States.Select(x => x.Data).ToList();
+        }
+
+        /// <summary>
+        /// Imports states from another DMI file.
+        /// </summary>
+        /// <param name="other">The DMI file to import states from</param>
+        /// <returns>The number of states imported</returns>
+        public int ImportStates(DMIFile other)
+        {
+            if (other != null 
+                && other.States != null
+                && other.Metadata != null 
+                && Metadata != null
+                && other.Metadata.FrameHeight == Metadata.FrameHeight 
+                && other.Metadata.FrameWidth == Metadata.FrameWidth)
+            {
+                var added = 0;
+                while (other.States.Count != 0)
+                {
+                    var cursor = other.States.First();
+                    other.RemoveState(cursor);
+                    AddState(cursor);
+                    added++;
+                }
+
+                return added;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Clears the states from a DMI file.
+        /// </summary>
+        public void ClearStates()
+        {
+            _States.Clear();
+        }
+
+        /// <summary>
+        /// Removes a state from a DMI File
+        /// </summary>
+        /// <param name="toRemove">The DMIState to remove</param>
+        /// <returns>True if the state was removed, otherwise false</returns>
+        public bool RemoveState(DMIState toRemove)
+        {
+            if (toRemove != null && toRemove.Data != null && _States.Remove(toRemove))
+            {
+                return Metadata.States.Remove(toRemove.Data);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Adds a state to a DMI File
+        /// </summary>
+        /// <param name="toAdd">The DMIState to add</param>
+        /// <returns>True if the state was added, otherwise false</returns>
+        public bool AddState(DMIState toAdd)
+        {
+            if (StateValidForFile(toAdd) && toAdd?.Data != null)
+            {
+                _States.Add(toAdd);
+                Metadata.States.Add(toAdd.Data);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Ensures that a state is valid for a DMI File's existing dimensions
+        /// </summary>
+        /// <param name="toCheck">The DMIState to check against the file</param>
+        /// <returns>True if the state is compatable with the file, false otherwise</returns>
+        private bool StateValidForFile(DMIState toCheck)
+        {
+            return toCheck != null
+                && toCheck.Height == Metadata.FrameHeight
+                && toCheck.Width == Metadata.FrameWidth;
         }
 
         /// <summary>

@@ -26,7 +26,13 @@
     <None Update="Data\Input\atmos_testing.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Data\Input\centcom.dmi">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Data\Input\lighting.dmi">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\Input\misc.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Data\Input\spacedragon.dmi">
@@ -35,14 +41,9 @@
     <None Update="Data\Input\turf_analysis.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Data\Output\emptyFile.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\Output\" />
-  </ItemGroup>
-
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="mkdir $(TargetDir)\Data\Output" />
-  </Target>
 
 </Project>

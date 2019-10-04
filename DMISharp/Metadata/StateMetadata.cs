@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DMISharp.Metadata
@@ -11,16 +10,23 @@ namespace DMISharp.Metadata
     /// </summary>
     public class StateMetadata
     {
-        public string State;
-        public int Dirs;
-        public int Frames;
-        public double[] Delay;
-        public bool Rewind;
-        public bool Movement;
-        public bool Loop;
-        public IEnumerable<double[]> Hotspots;
+        public string State { get; set; }
+        public int Dirs { get; internal set; }
+        public int Frames { get; internal set; }
+        public double[] Delay { get; internal set; }
+        public bool Rewind { get; set; }
+        public bool Movement { get; set; }
+        public bool Loop { get; set; }
+        public IEnumerable<double[]> Hotspots { get; set; }
         private Regex statePattern = new Regex("^state = \"(?<label>.*)\"$");
         private Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$");
+
+        public StateMetadata(string name, DirectionDepth directionDepth, int frames)
+        {
+            State = name;
+            Dirs = (int)directionDepth;
+            Frames = frames;
+        }
 
         /// <summary>
         /// Instantiates a StateMetadata object from a collection of body metadata
