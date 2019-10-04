@@ -5,6 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using DMISharp.Metadata;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.Primitives;
+using SixLabors.ImageSharp.Formats.Png;
+using System.Text;
 
 namespace DMISharp
 {
@@ -37,9 +42,90 @@ namespace DMISharp
         /// </summary>
         /// <param name="file">The path to the DMI file.</param>
         public DMIFile(string file)
-            : this(File.Open(file, FileMode.Open))
+            : this(File.OpenRead(file))
         {
 
+        }
+        
+        /// <summary>
+        /// Saves a DMI File to a stream. The resulting file is .dmi-ready
+        /// </summary>
+        /// <param name="stream">The stream to save the DMI File to.</param>
+        public void Save(Stream stream)
+        {
+            var numStates = States.Count();
+            if (numStates == 0) return;
+
+            // prepare frames
+            var frames = new List<Image>();
+            foreach (var state in States)
+            {
+                for (int i = 0; i < state.Dirs; i++)
+                {
+                    for (int j = 0; j < state.Frames; j++)
+                    {
+                        frames.Add(state.Images[i, j]);
+                    }
+                }
+            }
+            var numFrames = frames.Count();
+
+            // Get dimensions in frames
+            var xFrames = Math.Max(1, (int)Math.Sqrt(numFrames));
+            var yFrames = Math.Max(1, (int)Math.Ceiling(numFrames * 1.0 / xFrames));
+
+            using (var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight))
+            {
+                for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
+                {
+                    for (int x = 0; x < xFrames && i < numFrames; x++, i++) 
+                    {
+                        var targetFrame = frames[i];
+                        var targetPoint = new Point(x * Metadata.FrameWidth, y * Metadata.FrameHeight);
+                        img.Mutate(ctx => ctx.DrawImage(targetFrame, targetPoint, PixelColorBlendingMode.Normal, 1));
+                    }
+                }
+
+                PngMetadata md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
+                md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
+
+                img.SaveAsPng(stream);
+            }
+        }
+
+        /// <summary>
+        /// Saves a DMI File to a specific file path.
+        /// </summary>
+        /// <param name="path">The path to save the image to.</param>
+        public void Save(string path)
+        {
+            using (var fs = File.OpenWrite(path))
+            {
+                Save(fs);
+            }
+        }
+
+        /// <summary>
+        /// Develops BYOND txt header for DMI files
+        /// </summary>
+        /// <returns>The BYOND txt header for this DMI file</returns>
+        private string GetTextChunk()
+        {
+            var builder = new StringBuilder();
+            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version : 0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+
+            foreach (var state in States)
+            {
+                builder.Append($"state = \"{state.Name}\"\n\tdirs = {state.Dirs}\n\tframes = {state.Frames}\n");
+                if (state.Data.Delay != null) builder.Append($"\tdelay = {string.Join(",", state.Data.Delay)}\n");
+                if (state.Data.Loop) builder.Append($"\tloop = 1\n");
+                if (state.Data.Hotspots != null) builder.Append($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n");
+                if (state.Data.Movement) builder.Append("\tmovement = 1\n");
+                if (state.Data.Rewind) builder.Append("\trewind = 1\n");
+            }
+
+            builder.Append("# END DMI");
+            return builder.ToString();
         }
 
         /// <summary>
@@ -52,7 +138,7 @@ namespace DMISharp
         {
             var states = new List<DMIState>();
 
-            using (var img = Image.Load(source))
+            using (var img = Image.Load<Rgba32>(source))
             {
                 Metadata.Height = img.Height;
                 Metadata.Width = img.Width;
@@ -95,6 +181,25 @@ namespace DMISharp
             }
 
             return states;
+        }
+
+        /// <summary>
+        /// Sorts the states of this DMI File alphabetically by their state name.
+        /// </summary>
+        public void SortStates()
+        {
+            States = States.OrderBy(x => x.Name);
+            Metadata.States = States.Select(x => x.Data);
+        }
+
+        /// <summary>
+        /// Sorts the states of this DMI File using a provided comparer for DMIStates.
+        /// </summary>
+        /// <param name="comparer">The comparer to use</param>
+        public void SortStates(IComparer<DMIState> comparer)
+        {
+            States = States.OrderBy(x => x, comparer);
+            Metadata.States = States.Select(x => x.Data);
         }
 
         /// <summary>

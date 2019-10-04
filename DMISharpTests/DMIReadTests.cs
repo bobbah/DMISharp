@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DMISharpTests
 {
-    public class DMILoadTests
+    public class DMIReadTests
     {
         [Fact]
         public void AnimalDMIStateCount()

@@ -69,10 +69,18 @@ namespace DMISharp
                         return images;
                     }
 
-                    // Clone and select the frame from the source image.
-                    var frame = source.Clone();
-                    frame.Mutate(
-                            img => img.Crop(new Rectangle(currWIndex * width, currHIndex * height, width, height)));
+                    // Copy frame pixels from source image
+                    var frame = new Image<Rgba32>(width, height);
+                    var xOffset = currWIndex * width;
+                    var yOffset = currHIndex * height;
+                    for(int xpx = 0; xpx < width; xpx++)
+                    {
+                        for (int ypx = 0; ypx < height; ypx++)
+                        {
+                            frame[xpx, ypx] = source[xpx + xOffset, ypx + yOffset];
+                        }
+                    }
+
                     images[currDir, currFrame] = frame;
 
                     if (currFrame >= Frames - 1)
@@ -122,8 +130,8 @@ namespace DMISharp
                 {
                     using (var cpy = Images[i, j].Clone())
                     {
-                        cpy.Frames.RootFrame.MetaData.GetFormatMetaData(GifFormat.Instance).FrameDelay = (int)(delay[j] * 10.0);
-                        cpy.Frames.RootFrame.MetaData.GetFormatMetaData(GifFormat.Instance).DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels behave
+                        cpy.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay = (int)(delay[j] * 10.0);
+                        cpy.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance).DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels behave
                         toAdd.Frames.InsertFrame(j, cpy.Frames.RootFrame);
                     }
                 }
