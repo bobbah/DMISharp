@@ -45,5 +45,29 @@ namespace DMISharpTests
                 newDMI.Save(@"Data/Output/minecraft.dmi");
             }
         }
+
+        [Fact]
+        public void CanChangeDMIDepths()
+        {
+            using (var newDMI = new DMIFile(32, 32))
+            {
+                // Create state
+                var img = Image.Load<Rgba32>($@"Data/Input/SourceImages/steve32.png");
+                var newState = new DMIState("steve32", DirectionDepth.One, 1, 32, 32);
+                newState.SetFrame(img, 0);
+                newDMI.AddState(newState);
+
+                // Modifying state
+                newDMI.States.First().SetDirectionDepth(DirectionDepth.Four);
+                newDMI.States.First().SetFrameCount(10);
+
+                // Check new states
+                Assert.Equal(DirectionDepth.Four, newDMI.States.First().DirectionDepth);
+                Assert.Equal(10, newDMI.States.First().Frames);
+
+                // Cannot save
+                Assert.False(newDMI.Save(@"Data/Output/minecraft.dmi"));
+            }
+        }
     }
 }

@@ -284,8 +284,9 @@ namespace DMISharp
         {
             if (depth != DirectionDepth)
             {
+                var minDepth = Math.Min((int)depth, (int)DirectionDepth);
                 var temp = new Image<Rgba32>[(int)depth][];
-                for (int i = 0; i < (int)depth; i++)
+                for (int i = 0; i < minDepth; i++)
                 {
                     temp[i] = _Images[i];
                 }
@@ -375,7 +376,7 @@ namespace DMISharp
         /// </summary>
         public void Dispose()
         {
-            foreach (var image in _Images.SelectMany(x => x))
+            foreach (var image in _Images.SelectMany(x => x).Where(x => x != null))
             {
                 image.Dispose();
             }

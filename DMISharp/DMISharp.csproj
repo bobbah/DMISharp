@@ -9,14 +9,14 @@
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.3.2.0</AssemblyVersion>
-    <Version>1.3.1</Version>
+    <AssemblyVersion>1.3.3.0</AssemblyVersion>
+    <Version>1.3.3</Version>
     <PackageIconUrl>https://melonmesa.com/storage/dmisharp.png</PackageIconUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-    <PackageReleaseNotes>Fixed issue when trying to write to a frame, added unit tests for creating DMIs from source images.</PackageReleaseNotes>
-    <FileVersion>1.3.2.0</FileVersion>
+    <PackageReleaseNotes>Fixed issue with disposing nulled frames on states.</PackageReleaseNotes>
+    <FileVersion>1.3.3.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
