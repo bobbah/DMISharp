@@ -5,7 +5,9 @@ DMISharp
 </h1>
 
 <div align="center">
-    [![Build Status](https://travis-ci.com/bobbahbrown/DMISharp.svg?branch=master)](https://travis-ci.com/bobbahbrown/DMISharp)]
+
+[![Build Status](https://travis-ci.com/bobbahbrown/DMISharp.svg?branch=master)](https://travis-ci.com/bobbahbrown/DMISharp)
+
 </div>
 
 ### **DMISharp** is a .NET Standard 2.0 library for easily interacting with the BYOND DMI file format.
