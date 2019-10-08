@@ -23,7 +23,7 @@ namespace DMISharpTests
                     newDMI.ImportStates(secondFile);
                 }
 
-                Assert.True(newDMI.Save(@"Data/Output/merged.dmi"));
+                newDMI.Save(@"Data/Output/merged.dmi");
             }
         }
 
@@ -66,7 +66,7 @@ namespace DMISharpTests
                 Assert.Equal(10, newDMI.States.First().Frames);
 
                 // Cannot save
-                Assert.False(newDMI.Save(@"Data/Output/minecraft.dmi"));
+                Assert.False(newDMI.CanSave());
             }
         }
     }

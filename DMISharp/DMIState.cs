@@ -5,6 +5,8 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Gif;
 using DMISharp.Metadata;
 using System.Linq;
+using DMISharp.Interfaces;
+using System.IO;
 
 namespace DMISharp
 {
@@ -112,8 +114,13 @@ namespace DMISharp
         private Image<Rgba32>[][] SeperateImages(Image<Rgba32> source, int currWIndex, int wIndex, int currHIndex, int hIndex, int width, int height)
         {
             var images = new Image<Rgba32>[Dirs][];
-            images[0] = new Image<Rgba32>[Frames];
             int currDir = 0, currFrame = 0;
+
+            // Create dirs
+            for (int dir = 0; dir < Dirs; dir++)
+            {
+                images[dir] = new Image<Rgba32>[Frames];
+            }
 
             // Iterate through each row of frames.
             for (; currHIndex < hIndex; currHIndex++)
@@ -121,12 +128,20 @@ namespace DMISharp
                 // Iterate through each column of frames.
                 for (; currWIndex < wIndex; currWIndex++)
                 {
-                    // Account for when there are empty frames on an image.
-                    if (currDir >= Dirs)
+                    // Catch end of sprite
+                    if (currDir == Dirs)
                     {
-                        return images;
+                        if (currFrame == Frames - 1)
+                        {
+                            return images;
+                        }
+                        else
+                        {
+                            currDir = 0;
+                            currFrame++;
+                        }
                     }
-
+                    
                     // Copy frame pixels from source image
                     var frame = new Image<Rgba32>(width, height);
                     var xOffset = currWIndex * width;
@@ -140,17 +155,7 @@ namespace DMISharp
                     }
 
                     images[currDir][currFrame] = frame;
-
-                    if (currFrame >= Frames - 1)
-                    {
-                        currFrame = 0;
-                        currDir++;
-                        if (currDir < Dirs) images[currDir] = new Image<Rgba32>[Frames];
-                    }
-                    else
-                    {
-                        currFrame++;
-                    }
+                    currDir++;
                 }
 
                 currWIndex = 0;

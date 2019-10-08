@@ -9,13 +9,14 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.Primitives;
 using SixLabors.ImageSharp.Formats.Png;
 using System.Text;
+using DMISharp.Interfaces;
 
 namespace DMISharp
 {
     /// <summary>
     /// Provides a means to interact with BYOND DMI files.
     /// </summary>
-    public class DMIFile : IDisposable
+    public class DMIFile : IDisposable, IExportable
     {
         public DMIMetadata Metadata { get; private set; }
         private List<DMIState> _States { get; set; }
@@ -58,19 +59,19 @@ namespace DMISharp
         /// </summary>
         /// <param name="stream">The stream to save the DMI File to.</param>
         /// <returns>True if the file was saved, false otherwise</returns>
-        public bool Save(Stream stream)
+        public void Save(Stream stream)
         {
-            if (!CanSave()) return false;
+            if (stream == null) throw new ArgumentNullException(nameof(stream), "Target stream cannot be null!");
 
             // prepare frames
             var frames = new List<Image>();
             foreach (var state in States)
             {
-                for (int i = 0; i < state.Dirs; i++)
+                for (int frame = 0; frame < state.Frames; frame++)
                 {
-                    for (int j = 0; j < state.Frames; j++)
+                    for (int dir = 0; dir < state.Dirs; dir++)
                     {
-                        frames.Add(state.GetFrame((StateDirection)i, j));
+                        frames.Add(state.GetFrame((StateDirection)dir, frame));
                     }
                 }
             }
@@ -97,8 +98,6 @@ namespace DMISharp
 
                 img.SaveAsPng(stream);
             }
-
-            return true;
         }
 
         /// <summary>
@@ -106,11 +105,11 @@ namespace DMISharp
         /// </summary>
         /// <param name="path">The path to save the image to.</param>
         /// <returns>True if the file was saved, false otherwise</returns>
-        public bool Save(string path)
+        public void Save(string path)
         {
             using (var fs = File.OpenWrite(path))
             {
-                return Save(fs);
+                Save(fs);
             }
         }
 

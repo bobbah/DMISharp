@@ -13,7 +13,7 @@ namespace DMISharpTests
         {
             using (var file = new DMIFile(@"Data/Input/air_meter.dmi"))
             {
-                Assert.True(file.Save(@"Data/Output/air_meter_temp.dmi"));
+                file.Save(@"Data/Output/air_meter_temp.dmi");
             }
         }
 
@@ -23,7 +23,7 @@ namespace DMISharpTests
             using (var file = new DMIFile(@"Data/Input/animal.dmi"))
             {
                 file.SortStates();
-                Assert.True(file.Save(@"Data/Output/animal_sorted_alphabetically.dmi"));
+                file.Save(@"Data/Output/animal_sorted_alphabetically.dmi");
             }
         }
     }
