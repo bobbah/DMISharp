@@ -14,9 +14,9 @@ namespace DMISharp.Metadata
         public int Dirs { get; internal set; }
         public int Frames { get; internal set; }
         public double[] Delay { get; internal set; }
-        public bool Rewind { get; set; }
-        public bool Movement { get; set; }
-        public bool Loop { get; set; }
+        public bool Rewind { get; internal set; }
+        public bool Movement { get; internal set; }
+        public int Loop { get; internal set; }
         public IEnumerable<double[]> Hotspots { get; set; }
         private Regex statePattern = new Regex("^state = \"(?<label>.*)\"$");
         private Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$");
@@ -111,7 +111,7 @@ namespace DMISharp.Metadata
                 var cursor = rowKV.Where(x => x.key == "loop").First();
                 try
                 {
-                    Loop = int.Parse(cursor.value) == 1;
+                    Loop = int.Parse(cursor.value);
                 }
                 catch (FormatException e)
                 {

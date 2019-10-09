@@ -140,7 +140,7 @@ namespace DMISharp
             {
                 builder.Append($"state = \"{state.Name}\"\n\tdirs = {state.Dirs}\n\tframes = {state.Frames}\n");
                 if (state.Data.Delay != null) builder.Append($"\tdelay = {string.Join(",", state.Data.Delay)}\n");
-                if (state.Data.Loop) builder.Append($"\tloop = 1\n");
+                if (state.Data.Loop > 0) builder.Append($"\tloop = {state.Data.Loop}\n");
                 if (state.Data.Hotspots != null) builder.Append($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n");
                 if (state.Data.Movement) builder.Append("\tmovement = 1\n");
                 if (state.Data.Rewind) builder.Append("\trewind = 1\n");

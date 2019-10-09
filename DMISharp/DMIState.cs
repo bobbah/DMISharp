@@ -7,6 +7,7 @@ using DMISharp.Metadata;
 using System.Linq;
 using DMISharp.Interfaces;
 using System.IO;
+using SixLabors.ImageSharp.Processing.Processors.Quantization;
 
 namespace DMISharp
 {
@@ -179,34 +180,242 @@ namespace DMISharp
         /// <returns>An array of Image objects containing the directional animations for the state.</returns>
         public Image<Rgba32>[] GetAnimated()
         {
-            if (!IsAnimated()) return null;
+            if (!IsAnimated())
+            {
+                throw new InvalidOperationException("Invalid operation, this state is not animated.");
+            }
 
             var toReturn = new Image<Rgba32>[Dirs];
-            var delay = Data.Delay;
 
             // Iterate through each direction and create an animation.
-            for (int i = 0; i < Dirs; i++)
+            for (int dir = 0; dir < Dirs; dir++)
             {
-                var toAdd = new Image<Rgba32>(_Images[0][0].Width, _Images[0][0].Height); // Create the new image to hold animation.
-
-                // Iterate through each frame for the animated image.
-                for (int j = 0; j < Frames; j++)
-                {
-                    using (var cpy = _Images[i][j].Clone())
-                    {
-                        cpy.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay = (int)(delay[j] * 10.0);
-                        cpy.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance).DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels behave
-                        toAdd.Frames.InsertFrame(j, cpy.Frames.RootFrame);
-                    }
-                }
-
-                toAdd.Frames.RemoveFrame(toAdd.Frames.Count - 1); // Remove empty frame at end of animation.
-                toAdd.Mutate(x => x.BackgroundColor(Rgba32.Transparent)); // Specify the animation has a transparent background for transparent pixels.
-                toReturn[i] = toAdd;
+                toReturn[dir] = GetAnimated((StateDirection)dir);
             }
 
             return toReturn;
         }
+
+        /// <summary>
+        /// Gets the animated image for a requested direction.
+        /// </summary>
+        /// <param name="direction">The state direction to request</param>
+        /// <returns>The requested image</returns>
+        public Image<Rgba32> GetAnimated(StateDirection direction)
+        {
+            if (!IsAnimated())
+            {
+                throw new InvalidOperationException("Invalid operation, this state is not animated.");
+            }
+            else if ((int)direction >= (int)DirectionDepth)
+            {
+                throw new InvalidOperationException("Invalid operation, requested a direction that does not exist on this state.");
+            }
+
+            // Develop gif
+            var toReturn = new Image<Rgba32>(Width, Height);
+            for (int frame = 0; frame < Frames; frame++)
+            {
+                var cursor = _Images[(int)direction][frame];
+                var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
+                metadata.FrameDelay = (int)(Data.Delay[frame] * 10.0);
+                metadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels 
+                toReturn.Frames.InsertFrame(frame, cursor.Frames.RootFrame);
+            }
+
+            // Final process
+            var gifMetadata = toReturn.Metadata.GetFormatMetadata(GifFormat.Instance);
+            toReturn.Frames.RemoveFrame(toReturn.Frames.Count - 1); // Remove empty frame at end of the animation
+            toReturn.Mutate(x => x.BackgroundColor(Rgba32.Transparent)); // Specify the animation has a transparent background for transparent pixels
+            gifMetadata.RepeatCount = (ushort)Data.Loop;
+
+            return toReturn;
+        }
+
+        /// <summary>
+        /// Saves an animated gif to a provided stream.
+        /// </summary>
+        /// <param name="stream">The stream to write data to.</param>
+        /// <param name="direction">The direction of the state to retrieve the gif for.</param>
+        /// <param name="encoder">The GifEncoder to use, if null a default is generated. Only override if required.</param>
+        public void SaveAnimatedGIF(Stream stream, StateDirection direction, GifEncoder encoder = null)
+        {
+            if (!IsAnimated())
+            {
+                throw new InvalidOperationException("Invalid operation, this state is not animated.");
+            }
+
+            if (encoder == null)
+            {
+                encoder = new GifEncoder() 
+                {
+                    Quantizer = new OctreeQuantizer(false) // Disable dithering as this generally negatively impacts pixelart animations.
+                };
+            }
+
+            using (var img = GetAnimated(direction))
+            {
+                img.SaveAsGif(stream, encoder);
+            }
+        }
+
+        #region Animation Attributes
+
+        /// <summary>
+        /// Initializes the delay array for a state, 'creates' an animated state.
+        /// </summary>
+        public void InitializeDelay()
+        {
+            if (Data.Delay == null)
+            {
+                Data.Delay = new double[Frames];
+
+                for (int frame = 0; frame < Frames; frame++)
+                {
+                    Data.Delay[frame] = 1.0;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("This state is already initialized for animations.");
+            }
+        }
+
+        /// <summary>
+        /// Destroys the delay array for a state, 'destroys' an animated state.
+        /// </summary>
+        public void ClearDelay()
+        {
+            if (Data.Delay != null)
+            {
+                Data.Delay = null;
+            }
+            else
+            {
+                throw new InvalidOperationException("This state has no initialized delay for animations.");
+            }
+        }
+
+        /// <summary>
+        /// Sets the delay for a frame with a provided array between a pair of indices.
+        /// </summary>
+        /// <param name="delay">The array of delay values to set</param>
+        /// <param name="startIndex">The zero-based starting index of the desired frame</param>
+        /// <param name="endIndex">The zero-based ending index of the desired frame, defaults to the end of the delay index.</param>
+        /// <remarks>This will intialize the animated state if required.</remarks>
+        public void SetDelay(double[] delay, int startIndex = 0, int endIndex = -1)
+        {
+            if (endIndex == -1) endIndex = Frames - 1;
+
+            // If delay is null, at this point we can initialize it
+            if (Data.Delay == null)
+            {
+                InitializeDelay();
+            }
+
+            // Catch invalid array sizes
+            if (delay.Length > Data.Delay.Length - startIndex)
+            {
+                throw new ArgumentException("Provided array of delays is longer than the state's number of frames.");
+            }
+            else if (startIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException("Starting index cannot be negative");
+            }
+            else if (startIndex > endIndex)
+            {
+                throw new ArgumentOutOfRangeException("Starting index cannot be greater than ending index.");
+            }
+
+            for (int frame = startIndex; frame <= endIndex; frame++)
+            {
+                Data.Delay[frame] = delay[frame];
+            }
+        }
+
+        /// <summary>
+        /// Sets the delay for an individual frame
+        /// </summary>
+        /// <param name="frame">The zero-based frame index to set delay for</param>
+        /// <param name="delay">The delay value</param>
+        /// <remarks>This will intialize the animated state if required.</remarks>
+        public void SetDelay(int frame, double delay)
+        {
+            // If delay is null, at this point we can initialize it
+            if (Data.Delay == null)
+            {
+                InitializeDelay();
+            }
+
+            // Catch invalid array sizes
+            if (frame >= Frames)
+            {
+                throw new ArgumentException("Provided frame index is greater than the number of frames in this state.");
+            }
+            else if (frame < 0)
+            {
+                throw new ArgumentOutOfRangeException("Frame index cannot be negative");
+            }
+
+            Data.Delay[frame] = delay;
+        }
+
+        /// <summary>
+        /// Sets the movement attribute on this DMI state
+        /// </summary>
+        /// <param name="value">The desired value</param>
+        public void SetMovement(bool value)
+        {
+            if (value == Data.Movement) return;
+            else
+            {
+                if (value && Data.Delay == null)
+                {
+                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting movement.");
+                }
+
+                Data.Movement = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the number of times to loop the animation on this DMI state
+        /// </summary>
+        /// <param name="value">The number of times to loop this animation</param>
+        /// <remarks>A value of zero will loop infinitely</remarks>
+        public void SetLoop(int value)
+        {
+            if (value == Data.Loop) return;
+            else
+            {
+                if (Data.Delay == null)
+                {
+                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting loop.");
+                }
+
+                Data.Loop = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the rewind attribute on this DMI state
+        /// </summary>
+        /// <param name="value">The desired value</param>
+        public void SetRewind(bool value)
+        {
+            if (value == Data.Rewind) return;
+            else
+            {
+                if (Data.Delay == null)
+                {
+                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting rewind.");
+                }
+
+                Data.Rewind = value;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Retrieves a frame from a state
