@@ -225,6 +225,7 @@ namespace DMISharp
 
             // Final process
             var gifMetadata = toReturn.Metadata.GetFormatMetadata(GifFormat.Instance);
+            gifMetadata.ColorTableMode = GifColorTableMode.Local;
             toReturn.Frames.RemoveFrame(toReturn.Frames.Count - 1); // Remove empty frame at end of the animation
             toReturn.Mutate(x => x.BackgroundColor(Rgba32.Transparent)); // Specify the animation has a transparent background for transparent pixels
             gifMetadata.RepeatCount = (ushort)Data.Loop;
@@ -431,8 +432,8 @@ namespace DMISharp
         /// <summary>
         /// Helper for frame retrieval, defaults to the North (1) direction
         /// </summary>
-        /// <param name="frame">Thte frame index</param>
-        /// <returns>An ImageSharp Image represesnting the frame</returns>
+        /// <param name="frame">The frame index</param>
+        /// <returns>An ImageSharp Image representing the frame</returns>
         public Image<Rgba32> GetFrame(int frame)
         {
             return GetFrame(StateDirection.South, frame);
