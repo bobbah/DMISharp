@@ -9,18 +9,14 @@
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.3.4.0</AssemblyVersion>
-    <Version>1.4.0</Version>
+    <AssemblyVersion>1.4.1.0</AssemblyVersion>
+    <Version>1.4.1</Version>
     <PackageIconUrl>https://melonmesa.com/storage/dmisharp.png</PackageIconUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-    <PackageReleaseNotes>- Improved support for handling animations greatly
-- Added ability to export gif to stream in a state
-- Improved performance when creating animated image from a animated state
-- Added methods for interacting with animation-related attributes of DMIs
-- Implemented repeat count in generated gifs</PackageReleaseNotes>
-    <FileVersion>1.3.4.0</FileVersion>
+    <PackageReleaseNotes>- Updated gif color table mode to be local to better match BYOND exports.</PackageReleaseNotes>
+    <FileVersion>1.4.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
