@@ -1,7 +1,6 @@
-using System;
-using Xunit;
 using DMISharp;
 using System.Linq;
+using Xunit;
 
 namespace DMISharpTests
 {

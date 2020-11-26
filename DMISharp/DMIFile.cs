@@ -1,27 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using SixLabors.ImageSharp;
-using System.IO;
-using System.Linq;
+﻿using DMISharp.Interfaces;
 using DMISharp.Metadata;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.Primitives;
-using SixLabors.ImageSharp.Formats.Png;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
-using DMISharp.Interfaces;
 
 namespace DMISharp
 {
     /// <summary>
     /// Provides a means to interact with BYOND DMI files.
     /// </summary>
-    public class DMIFile : IDisposable, IExportable
+    public sealed class DMIFile : IDisposable, IExportable
     {
         public DMIMetadata Metadata { get; private set; }
-        private List<DMIState> _States { get; set; }
-        public IReadOnlyCollection<DMIState> States { get { return _States.AsReadOnly(); } }
-        
+        private List<DMIState> _States;
+        public IReadOnlyCollection<DMIState> States => _States.AsReadOnly();
+
         public DMIFile(int frameWidth, int frameHeight)
         {
             Metadata = new DMIMetadata(4.0, frameWidth, frameHeight);
@@ -34,6 +33,11 @@ namespace DMISharp
         /// <param name="stream">The Stream containing the DMI file data.</param>
         public DMIFile(Stream stream)
         {
+            if (stream is null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
             // As the metadata is embedded in the PNG file, extract into a usable object.
             Metadata = new DMIMetadata(stream);
 
@@ -81,23 +85,21 @@ namespace DMISharp
             var xFrames = Math.Max(1, (int)Math.Sqrt(numFrames));
             var yFrames = Math.Max(1, (int)Math.Ceiling(numFrames * 1.0 / xFrames));
 
-            using (var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight))
+            using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
+            for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
             {
-                for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
+                for (int x = 0; x < xFrames && i < numFrames; x++, i++)
                 {
-                    for (int x = 0; x < xFrames && i < numFrames; x++, i++) 
-                    {
-                        var targetFrame = frames[i];
-                        var targetPoint = new Point(x * Metadata.FrameWidth, y * Metadata.FrameHeight);
-                        img.Mutate(ctx => ctx.DrawImage(targetFrame, targetPoint, PixelColorBlendingMode.Normal, 1));
-                    }
+                    var targetFrame = frames[i];
+                    var targetPoint = new Point(x * Metadata.FrameWidth, y * Metadata.FrameHeight);
+                    img.Mutate(ctx => ctx.DrawImage(targetFrame, targetPoint, PixelColorBlendingMode.Normal, 1));
                 }
-
-                PngMetadata md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
-                md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
-
-                img.SaveAsPng(stream);
             }
+
+            PngMetadata md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
+            md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
+
+            img.SaveAsPng(stream);
         }
 
         /// <summary>
@@ -107,10 +109,8 @@ namespace DMISharp
         /// <returns>True if the file was saved, false otherwise</returns>
         public void Save(string path)
         {
-            using (var fs = File.OpenWrite(path))
-            {
-                Save(fs);
-            }
+            using var fs = File.OpenWrite(path);
+            Save(fs);
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace DMISharp
         private string GetTextChunk()
         {
             var builder = new StringBuilder();
-            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version : 0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version: 0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
 
             foreach (var state in States)
             {
@@ -160,7 +160,7 @@ namespace DMISharp
             var states = new List<DMIState>();
 
             using (var img = Image.Load<Rgba32>(source))
-            {              
+            {
                 // DMI data did not include widths or heights, assume that it is then
                 // perfect squares, thus we will determine the w/h programatically...
                 if (Metadata.FrameWidth == -1 || Metadata.FrameHeight == -1)
@@ -187,7 +187,7 @@ namespace DMISharp
                 int processedImages = 0;
                 int currWIndex = 0;
                 int currHIndex = 0;
-                
+
                 foreach (var state in Metadata.States)
                 {
                     var toAdd = new DMIState(state, img, currWIndex, wFrames, currHIndex, hFrames, Metadata.FrameWidth, Metadata.FrameHeight);
@@ -207,7 +207,8 @@ namespace DMISharp
         public void SortStates()
         {
             _States = _States.OrderBy(x => x.Name).ToList();
-            Metadata.States = _States.Select(x => x.Data).ToList();
+            Metadata.States.Clear();
+            Metadata.States.AddRange(_States.Select(x => x.Data).ToList());
         }
 
         /// <summary>
@@ -217,7 +218,8 @@ namespace DMISharp
         public void SortStates(IComparer<DMIState> comparer)
         {
             _States = _States.OrderBy(x => x, comparer).ToList();
-            Metadata.States = _States.Select(x => x.Data).ToList();
+            Metadata.States.Clear();
+            Metadata.States.AddRange(_States.Select(x => x.Data).ToList());
         }
 
         /// <summary>
@@ -227,11 +229,11 @@ namespace DMISharp
         /// <returns>The number of states imported</returns>
         public int ImportStates(DMIFile other)
         {
-            if (other != null 
+            if (other != null
                 && other.States != null
-                && other.Metadata != null 
+                && other.Metadata != null
                 && Metadata != null
-                && other.Metadata.FrameHeight == Metadata.FrameHeight 
+                && other.Metadata.FrameHeight == Metadata.FrameHeight
                 && other.Metadata.FrameWidth == Metadata.FrameWidth)
             {
                 var added = 0;

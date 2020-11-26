@@ -1,13 +1,12 @@
-﻿using System;
+﻿using DMISharp.Metadata;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Formats.Gif;
-using DMISharp.Metadata;
-using System.Linq;
-using DMISharp.Interfaces;
-using System.IO;
 using SixLabors.ImageSharp.Processing.Processors.Quantization;
+using System;
+using System.IO;
+using System.Linq;
 
 namespace DMISharp
 {
@@ -43,18 +42,18 @@ namespace DMISharp
     /// Represents an icon state in a BYOND DMI file.
     /// Allows for interacting with each frame of the state.
     /// </summary>
-    public class DMIState : IDisposable
+    public sealed class DMIState : IDisposable
     {
-        public string Name { get { return Data.State; } set { Data.State = value; } }
-        public int Dirs { get { return Data.Dirs; } }
-        public int Frames { get { return Data.Frames; } }
+        public string Name { get => Data.State; set => Data.State = value; }
+        public int Dirs => Data.Dirs;
+        public int Frames => Data.Frames;
         public int Height { get; private set; }
         public int Width { get; private set; }
-        public int TotalFrames { get { return _Images.Sum(x => x.Count(y => y != null)); } }
-        public int FrameCapacity { get { return _Images.Sum(x => x.Length); } }
+        public int TotalFrames => _Images.Sum(x => x.Count(y => y != null));
+        public int FrameCapacity => _Images.Sum(x => x.Length);
         public DirectionDepth DirectionDepth { get; private set; }
         public StateMetadata Data { get; private set; } // Stores key, value pairs from DMI file metadata.
-        private Image<Rgba32>[][] _Images { get; set; } // Stores each frame image following the [direction][frame] pattern.
+        private Image<Rgba32>[][] _Images; // Stores each frame image following the [direction][frame] pattern.
 
         /// <summary>
         /// Initializes a blank DMI state.
@@ -90,9 +89,14 @@ namespace DMISharp
         /// <param name="height">The height of an individual frame.</param>
         public DMIState(StateMetadata state, Image<Rgba32> source, int currWIndex, int wIndex, int currHIndex, int hIndex, int width, int height)
         {
-            Data = state ?? throw new ArgumentNullException("The provided state metadata cannot be null when instantiating a DMIState");
+            Data = state ?? throw new ArgumentNullException(nameof(state), "The provided state metadata cannot be null when instantiating a DMIState");
             Height = height;
             Width = width;
+
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
 
             // Develop frames
             _Images = SeperateImages(source, currWIndex, wIndex, currHIndex, hIndex, width, height);
@@ -142,12 +146,12 @@ namespace DMISharp
                             currFrame++;
                         }
                     }
-                    
+
                     // Copy frame pixels from source image
                     var frame = new Image<Rgba32>(width, height);
                     var xOffset = currWIndex * width;
                     var yOffset = currHIndex * height;
-                    for(int xpx = 0; xpx < width; xpx++)
+                    for (int xpx = 0; xpx < width; xpx++)
                     {
                         for (int ypx = 0; ypx < height; ypx++)
                         {
@@ -227,7 +231,7 @@ namespace DMISharp
             var gifMetadata = toReturn.Metadata.GetFormatMetadata(GifFormat.Instance);
             gifMetadata.ColorTableMode = GifColorTableMode.Local;
             toReturn.Frames.RemoveFrame(toReturn.Frames.Count - 1); // Remove empty frame at end of the animation
-            toReturn.Mutate(x => x.BackgroundColor(Rgba32.Transparent)); // Specify the animation has a transparent background for transparent pixels
+            toReturn.Mutate(x => x.BackgroundColor(new Rgba32())); // Specify the animation has a transparent background for transparent pixels
             gifMetadata.RepeatCount = (ushort)Data.Loop;
 
             return toReturn;
@@ -248,16 +252,14 @@ namespace DMISharp
 
             if (encoder == null)
             {
-                encoder = new GifEncoder() 
+                encoder = new GifEncoder()
                 {
-                    Quantizer = new OctreeQuantizer(false) // Disable dithering as this generally negatively impacts pixelart animations.
+                    Quantizer = new OctreeQuantizer(new QuantizerOptions() { Dither = null }) // Disable dithering as this generally negatively impacts pixelart animations.
                 };
             }
 
-            using (var img = GetAnimated(direction))
-            {
-                img.SaveAsGif(stream, encoder);
-            }
+            using var img = GetAnimated(direction);
+            img.SaveAsGif(stream, encoder);
         }
 
         #region Animation Attributes
@@ -314,6 +316,11 @@ namespace DMISharp
                 InitializeDelay();
             }
 
+            if (delay is null)
+            {
+                throw new ArgumentNullException(nameof(delay));
+            }
+
             // Catch invalid array sizes
             if (delay.Length > Data.Delay.Length - startIndex)
             {
@@ -321,11 +328,11 @@ namespace DMISharp
             }
             else if (startIndex < 0)
             {
-                throw new ArgumentOutOfRangeException("Starting index cannot be negative");
+                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be negative");
             }
             else if (startIndex > endIndex)
             {
-                throw new ArgumentOutOfRangeException("Starting index cannot be greater than ending index.");
+                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be greater than ending index.");
             }
 
             for (int frame = startIndex; frame <= endIndex; frame++)
@@ -355,7 +362,7 @@ namespace DMISharp
             }
             else if (frame < 0)
             {
-                throw new ArgumentOutOfRangeException("Frame index cannot be negative");
+                throw new ArgumentOutOfRangeException(nameof(frame), "Frame index cannot be negative");
             }
 
             Data.Delay[frame] = delay;
@@ -458,7 +465,7 @@ namespace DMISharp
             {
                 cursor.Dispose();
             }
-            
+
             _Images[(int)direction][frame] = newFrame;
         }
 
@@ -522,7 +529,7 @@ namespace DMISharp
                 // Insert empty arrays for extra new dirs if available
                 if (depth > DirectionDepth)
                 {
-                    for (int i = (int)DirectionDepth; i < (int)depth; i++) 
+                    for (int i = (int)DirectionDepth; i < (int)depth; i++)
                     {
                         temp[i] = new Image<Rgba32>[Frames];
                     }
