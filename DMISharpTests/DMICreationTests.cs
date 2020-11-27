@@ -44,6 +44,7 @@ namespace DMISharpTests
         public void CanChangeDMIDepths()
         {
             using var newDMI = new DMIFile(32, 32);
+
             // Create state
             var img = Image.Load<Rgba32>($@"Data/Input/SourceImages/steve32.png");
             var newState = new DMIState("steve32", DirectionDepth.One, 1, 32, 32);
