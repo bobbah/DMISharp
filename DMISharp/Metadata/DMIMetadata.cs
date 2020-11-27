@@ -15,8 +15,8 @@ namespace DMISharp.Metadata
         public double Version { get; private set; } // BYOND version
         public int FrameWidth { get; internal set; }
         public int FrameHeight { get; internal set; }
-        public List<StateMetadata> States;
-        private Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI");
+        public List<StateMetadata> States { get; }
+        private static readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI", RegexOptions.Compiled);
 
         public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
         {
@@ -42,7 +42,7 @@ namespace DMISharp.Metadata
             }
 
             // Get header data
-            var headerData = data.Take(data.TakeWhile(x => !x.StartsWith("state")).Count());
+            var headerData = data.Take(data.TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).Count());
             var bodyData = data.Skip(headerData.Count());
 
             // Get version
@@ -60,7 +60,7 @@ namespace DMISharp.Metadata
         /// </summary>
         /// <param name="directories">The metadata directories to search</param>
         /// <returns>An array of strings representing the lines of the DMI data</returns>
-        private string[] GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
+        private static string[] GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
         {
             MetadataExtractor.Directory cursor = null;
 
@@ -77,7 +77,7 @@ namespace DMISharp.Metadata
                 return null;
             }
 
-            var lines = cursor.Tags.First().Description.Split(new char[] { '\n', '\r' });
+            var lines = cursor.Tags[0].Description.Split(new char[] { '\n', '\r' });
 
             if (lines.Any())
             {
@@ -92,9 +92,9 @@ namespace DMISharp.Metadata
         /// </summary>
         /// <param name="headerData">The header metadata from a DMI file.</param>
         /// <returns>The version of DMI file if found, otherwise 0.</returns>
-        private double GetFileVersion(List<string> headerData)
+        private static double GetFileVersion(List<string> headerData)
         {
-            var possibleLines = headerData.Where(x => x.StartsWith("version"));
+            var possibleLines = headerData.Where(x => x.StartsWith("version", StringComparison.InvariantCulture));
 
             switch (possibleLines.Count())
             {
@@ -122,8 +122,8 @@ namespace DMISharp.Metadata
         private bool GetFrameDimensions(List<string> headerData)
         {
             // Get width
-            var widthLines = headerData.Where(x => x.StartsWith("\twidth"));
-            if (widthLines.Count() > 0)
+            var widthLines = headerData.Where(x => x.StartsWith("\twidth", StringComparison.InvariantCulture));
+            if (widthLines.Any())
             {
                 try
                 {
@@ -139,8 +139,8 @@ namespace DMISharp.Metadata
                 FrameWidth = -1;
             }
 
-            var heightLines = headerData.Where(x => x.StartsWith("\theight"));
-            if (heightLines.Count() > 0)
+            var heightLines = headerData.Where(x => x.StartsWith("\theight", StringComparison.InvariantCulture));
+            if (heightLines.Any())
             {
                 try
                 {
@@ -164,20 +164,20 @@ namespace DMISharp.Metadata
         /// </summary>
         /// <param name="bodyData">The body metadata of the DMI file.</param>
         /// <returns>A collection of StateMetadata objects representing each state in the file.</returns>
-        private List<StateMetadata> GetStateMetadata(List<string> bodyData)
+        private static List<StateMetadata> GetStateMetadata(List<string> bodyData)
         {
             var toReturn = new List<StateMetadata>();
-            var bodyLength = bodyData.Count();
+            var bodyLength = bodyData.Count;
 
             for (int line = 0; line < bodyLength; line++)
             {
                 // Iterate through each state
-                if (bodyData[line].StartsWith("state"))
+                if (bodyData[line].StartsWith("state", StringComparison.InvariantCulture))
                 {
-                    var test = bodyData.Skip(line).TakeWhile(x => !x.StartsWith("state")).ToList();
+                    var test = bodyData.Skip(line).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).ToList();
 
                     var toParse = new List<string>() { bodyData[line] };
-                    toParse.AddRange(bodyData.Skip(line + 1).TakeWhile(x => !x.StartsWith("state")));
+                    toParse.AddRange(bodyData.Skip(line + 1).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)));
                     toReturn.Add(new StateMetadata(toParse));
                 }
             }

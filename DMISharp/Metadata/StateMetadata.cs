@@ -13,13 +13,15 @@ namespace DMISharp.Metadata
         public string State { get; set; }
         public int Dirs { get; internal set; }
         public int Frames { get; internal set; }
+#pragma warning disable CA1819 // Properties should not return arrays
         public double[] Delay { get; internal set; }
+#pragma warning restore CA1819 // Properties should not return arrays
         public bool Rewind { get; internal set; }
         public bool Movement { get; internal set; }
         public int Loop { get; internal set; }
         public IEnumerable<double[]> Hotspots { get; set; }
-        private Regex statePattern = new Regex("^state = \"(?<label>.*)\"$");
-        private Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$");
+        private static readonly Regex statePattern = new Regex("^state = \"(?<label>.*)\"$", RegexOptions.Compiled);
+        private static readonly Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$", RegexOptions.Compiled);
 
         public StateMetadata(string name, DirectionDepth directionDepth, int frames)
         {
@@ -34,6 +36,11 @@ namespace DMISharp.Metadata
         /// <param name="data">A collection of body metadata for the state</param>
         public StateMetadata(List<string> data)
         {
+            if (data is null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
             // Get state name
             State = statePattern.Match(data[0]).Groups["label"].Value;
 
@@ -48,74 +55,74 @@ namespace DMISharp.Metadata
             // Consume the pairs we are interested in
             if (rowKV.Any(x => x.key == "dirs"))
             {
-                var cursor = rowKV.Where(x => x.key == "dirs").First();
+                var (key, value) = rowKV.Where(x => x.key == "dirs").First();
                 try
                 {
-                    Dirs = int.Parse(cursor.value);
+                    Dirs = int.Parse(value);
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "frames"))
             {
-                var cursor = rowKV.Where(x => x.key == "frames").First();
+                var (key, value) = rowKV.Where(x => x.key == "frames").First();
                 try
                 {
-                    Frames = int.Parse(cursor.value);
+                    Frames = int.Parse(value);
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "delay"))
             {
-                var cursor = rowKV.Where(x => x.key == "delay").First();
+                var (key, value) = rowKV.Where(x => x.key == "delay").First();
                 try
                 {
-                    Delay = cursor.value.Split(',').Select(x => double.Parse(x)).ToArray();
+                    Delay = value.Split(',').Select(x => double.Parse(x)).ToArray();
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "rewind"))
             {
-                var cursor = rowKV.Where(x => x.key == "rewind").First();
+                var (key, value) = rowKV.Where(x => x.key == "rewind").First();
                 try
                 {
-                    Rewind = int.Parse(cursor.value) == 1;
+                    Rewind = int.Parse(value) == 1;
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "movement"))
             {
-                var cursor = rowKV.Where(x => x.key == "movement").First();
+                var (key, value) = rowKV.Where(x => x.key == "movement").First();
                 try
                 {
-                    Movement = int.Parse(cursor.value) == 1;
+                    Movement = int.Parse(value) == 1;
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "loop"))
             {
-                var cursor = rowKV.Where(x => x.key == "loop").First();
+                var (key, value) = rowKV.Where(x => x.key == "loop").First();
                 try
                 {
-                    Loop = int.Parse(cursor.value);
+                    Loop = int.Parse(value);
                 }
                 catch (FormatException e)
                 {
-                    throw new FormatException($"Failed to parse value from k,v pair [{cursor.key} = {cursor.value}]", e);
+                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
                 }
             }
             if (rowKV.Any(x => x.key == "hotspot"))
@@ -125,9 +132,9 @@ namespace DMISharp.Metadata
                 {
                     var processed = new List<double[]>();
 
-                    foreach (var entry in cursor)
+                    foreach (var (key, value) in cursor)
                     {
-                        processed.Add(entry.value.Split(',').Select(x => double.Parse(x)).ToArray());
+                        processed.Add(value.Split(',').Select(x => double.Parse(x)).ToArray());
                     }
                 }
                 catch (FormatException e)

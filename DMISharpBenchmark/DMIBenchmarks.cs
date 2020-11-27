@@ -1,28 +1,42 @@
-﻿using DMISharp;
+﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Diagnostics.Windows.Configs;
+using DMISharp;
 using System.Linq;
-using Xunit;
 
-namespace DMISharpTests
+namespace DMISharpBenchmark
 {
-    public class DMIWriteTests
+    [EtwProfiler]
+    public class DMIBenchmarks
     {
-        [Fact]
-        public void CanWriteDMIFile()
+        [Benchmark]
+        public static DMIFile ReadSmallDMIFile()
+        {
+            return new DMIFile("Data/Input/small.dmi");
+        }
+
+        [Benchmark]
+        public static DMIFile ReadLargeDMIFile()
+        {
+            return new DMIFile("Data/Input/large.dmi");
+        }
+
+        [Benchmark]
+        public static void WriteDMIFile()
         {
             using var file = new DMIFile(@"Data/Input/air_meter.dmi");
             file.Save(@"Data/Output/air_meter_temp.dmi");
         }
 
-        [Fact]
-        public void CanSortDMIFile()
+        [Benchmark]
+        public static void SortDMIFile()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             file.SortStates();
             file.Save(@"Data/Output/animal_sorted_alphabetically.dmi");
         }
 
-        [Fact]
-        public void CanWriteAnimations()
+        [Benchmark]
+        public static void WriteAnimations()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
@@ -34,11 +48,8 @@ namespace DMISharpTests
             }
         }
 
-        /// <summary>
-        /// Tests if gif frames are accidentally disposed after creating animation
-        /// </summary>
-        [Fact]
-        public void AnimationConstructDoesNotDisposeFrames()
+        [Benchmark]
+        public static void AnimationConstructDoesNotDisposeFrames()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
@@ -56,8 +67,8 @@ namespace DMISharpTests
             }
         }
 
-        [Fact]
-        public void AnimationOfBarsignsConstructsCorrectly()
+        [Benchmark]
+        public static void AnimationOfBarsignsConstructsCorrectly()
         {
             using var fs = System.IO.File.OpenWrite(@"Data/Output/thegreytide.gif");
             using var file = new DMIFile(@"Data/Input/barsigns.dmi");
@@ -65,8 +76,8 @@ namespace DMISharpTests
             toTest.SaveAnimatedGIF(fs, StateDirection.South);
         }
 
-        [Fact]
-        public void AnimationOfSingularityConstructsCorrectly()
+        [Benchmark]
+        public static void AnimationOfSingularityConstructsCorrectly()
         {
             using var fs = System.IO.File.OpenWrite(@"Data/Output/singularity_s11.gif");
             using var file = new DMIFile(@"Data/Input/352x352.dmi");
