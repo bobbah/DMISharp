@@ -15,16 +15,17 @@ namespace DMISharp
     /// <summary>
     /// Provides a means to interact with BYOND DMI files.
     /// </summary>
-    public sealed class DMIFile : IDisposable, IExportable
+    public class DMIFile : IDisposable, IExportable
     {
         public DMIMetadata Metadata { get; private set; }
-        private List<DMIState> _States;
-        public IReadOnlyCollection<DMIState> States => _States.AsReadOnly();
+        private List<DMIState> _states;
+        private bool _disposedValue;
+        public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
 
         public DMIFile(int frameWidth, int frameHeight)
         {
             Metadata = new DMIMetadata(4.0, frameWidth, frameHeight);
-            _States = new List<DMIState>();
+            _states = new List<DMIState>();
         }
 
         /// <summary>
@@ -43,7 +44,7 @@ namespace DMISharp
 
             // Reset stream position for processing image data.
             stream.Seek(0, SeekOrigin.Begin);
-            _States = GetStates(stream).ToList();
+            _states = GetStates(stream).ToList();
 
             stream.Dispose();
         }
@@ -68,7 +69,7 @@ namespace DMISharp
             if (stream == null) throw new ArgumentNullException(nameof(stream), "Target stream cannot be null!");
 
             // prepare frames
-            var frames = new List<Image>();
+            var frames = new List<Image<Rgba32>>();
             foreach (var state in States)
             {
                 for (int frame = 0; frame < state.Frames; frame++)
@@ -91,8 +92,15 @@ namespace DMISharp
                 for (int x = 0; x < xFrames && i < numFrames; x++, i++)
                 {
                     var targetFrame = frames[i];
-                    var targetPoint = new Point(x * Metadata.FrameWidth, y * Metadata.FrameHeight);
-                    img.Mutate(ctx => ctx.DrawImage(targetFrame, targetPoint, PixelColorBlendingMode.Normal, 1));
+                    for (int ypx = 0; ypx < Metadata.FrameHeight; ypx++)
+                    {
+                        var sourceSpan = targetFrame.GetPixelRowSpan(ypx);
+                        var destSpan = img.GetPixelRowSpan(ypx + y * Metadata.FrameHeight);
+                        for (int xpx = 0; xpx < Metadata.FrameWidth; xpx++)
+                        {
+                            destSpan[xpx + x * Metadata.FrameWidth] = sourceSpan[xpx];
+                        }
+                    }
                 }
             }
 
@@ -206,9 +214,9 @@ namespace DMISharp
         /// </summary>
         public void SortStates()
         {
-            _States = _States.OrderBy(x => x.Name).ToList();
+            _states = _states.OrderBy(x => x.Name).ToList();
             Metadata.States.Clear();
-            Metadata.States.AddRange(_States.Select(x => x.Data).ToList());
+            Metadata.States.AddRange(_states.Select(x => x.Data).ToList());
         }
 
         /// <summary>
@@ -217,9 +225,9 @@ namespace DMISharp
         /// <param name="comparer">The comparer to use</param>
         public void SortStates(IComparer<DMIState> comparer)
         {
-            _States = _States.OrderBy(x => x, comparer).ToList();
+            _states = _states.OrderBy(x => x, comparer).ToList();
             Metadata.States.Clear();
-            Metadata.States.AddRange(_States.Select(x => x.Data).ToList());
+            Metadata.States.AddRange(_states.Select(x => x.Data).ToList());
         }
 
         /// <summary>
@@ -258,7 +266,7 @@ namespace DMISharp
         /// </summary>
         public void ClearStates()
         {
-            _States.Clear();
+            _states.Clear();
         }
 
         /// <summary>
@@ -268,7 +276,7 @@ namespace DMISharp
         /// <returns>True if the state was removed, otherwise false</returns>
         public bool RemoveState(DMIState toRemove)
         {
-            if (toRemove != null && toRemove.Data != null && _States.Remove(toRemove))
+            if (toRemove != null && toRemove.Data != null && _states.Remove(toRemove))
             {
                 return Metadata.States.Remove(toRemove.Data);
             }
@@ -287,7 +295,7 @@ namespace DMISharp
         {
             if (StateValidForFile(toAdd) && toAdd?.Data != null)
             {
-                _States.Add(toAdd);
+                _states.Add(toAdd);
                 Metadata.States.Add(toAdd.Data);
                 return true;
             }
@@ -312,12 +320,36 @@ namespace DMISharp
         /// <summary>
         /// Ensure when the DMI File is disposed of that all DMI States and their respective images are disposed of.
         /// </summary>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    foreach (var state in States)
+                    {
+                        state.Dispose();
+                    }
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                _disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~DMIFile()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
         public void Dispose()
         {
-            foreach (var state in States)
-            {
-                state.Dispose();
-            }
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
