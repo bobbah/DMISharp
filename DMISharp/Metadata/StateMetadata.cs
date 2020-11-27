@@ -20,8 +20,8 @@ namespace DMISharp.Metadata
         public bool Movement { get; internal set; }
         public int Loop { get; internal set; }
         public IEnumerable<double[]> Hotspots { get; set; }
-        private readonly Regex statePattern = new Regex("^state = \"(?<label>.*)\"$");
-        private readonly Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$");
+        private static readonly Regex statePattern = new Regex("^state = \"(?<label>.*)\"$", RegexOptions.Compiled);
+        private static readonly Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$", RegexOptions.Compiled);
 
         public StateMetadata(string name, DirectionDepth directionDepth, int frames)
         {

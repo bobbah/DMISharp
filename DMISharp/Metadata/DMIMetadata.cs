@@ -16,7 +16,7 @@ namespace DMISharp.Metadata
         public int FrameWidth { get; internal set; }
         public int FrameHeight { get; internal set; }
         public List<StateMetadata> States { get; }
-        private readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI");
+        private static readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI", RegexOptions.Compiled);
 
         public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
         {
