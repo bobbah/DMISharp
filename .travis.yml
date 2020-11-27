@@ -2,7 +2,7 @@ language: csharp
 mono: none
 os: linux
 dist: focal
-dotnet: 5.0
+dotnet: 5.0.100
 install:
  - dotnet restore
 script:
