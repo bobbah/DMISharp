@@ -12,7 +12,7 @@ namespace DMISharpTests
             using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
 
             // Arrange
-            var mdCount = file.Metadata.States.Count();
+            var mdCount = file.Metadata.States.Count;
             var stateToRemove = file.States.Last();
 
             // Act
@@ -20,7 +20,7 @@ namespace DMISharpTests
 
             // Assert
             Assert.True(result);
-            Assert.Equal(mdCount - 1, file.Metadata.States.Count());
+            Assert.Equal(mdCount - 1, file.Metadata.States.Count);
         }
     }
 }
