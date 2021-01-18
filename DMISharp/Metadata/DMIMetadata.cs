@@ -35,12 +35,6 @@ namespace DMISharp.Metadata
             // Get each line of the DMI metadata
             var data = GetDMIData(ImageMetadataReader.ReadMetadata(stream));
 
-            // Failsafe for DMI format
-            if (data.Length > 0 && !_DMIStart.IsMatch(data[0]))
-            {
-                throw new ArgumentException("Found PNG-zTXt directory, but failed to verify with '# BEGIN DMI' tag");
-            }
-
             // Get header data
             var headerData = data.Take(data.TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).Count());
             var bodyData = data.Skip(headerData.Count());
@@ -62,29 +56,18 @@ namespace DMISharp.Metadata
         /// <returns>An array of strings representing the lines of the DMI data</returns>
         private static string[] GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
         {
-            MetadataExtractor.Directory cursor = null;
-
-            foreach (var directory in directories)
+            var metaDesc = directories
+                .SelectMany(x => x.Tags)
+                .Select(x => x.Description)
+                .FirstOrDefault(x => _DMIStart.IsMatch(x));
+            
+            if (metaDesc == null)
             {
-                if (directory.Name == "PNG-zTXt")
-                {
-                    cursor = directory;
-                }
+                throw new Exception("Failed to find BYOND DMI metadata in PNG text data!");
             }
 
-            if (cursor == null || cursor.Tags == null || !cursor.Tags.Any())
-            {
-                return null;
-            }
-
-            var lines = cursor.Tags[0].Description.Split(new char[] { '\n', '\r' });
-
-            if (lines.Any())
-            {
-                lines[0] = lines[0].Replace("Description: ", "");
-            }
-
-            return lines;
+            metaDesc = metaDesc[metaDesc.IndexOf('#')..];
+            return metaDesc.Split(new char[] { '\n', '\r' });
         }
 
         /// <summary>

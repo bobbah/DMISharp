@@ -5,30 +5,29 @@ using System.Linq;
 
 namespace DMISharpBenchmark
 {
-    [EtwProfiler]
     public class DMIBenchmarks
     {
         [Benchmark]
-        public static DMIFile ReadSmallDMIFile()
+        public DMIFile ReadSmallDMIFile()
         {
             return new DMIFile("Data/Input/small.dmi");
         }
 
         [Benchmark]
-        public static DMIFile ReadLargeDMIFile()
+        public DMIFile ReadLargeDMIFile()
         {
             return new DMIFile("Data/Input/large.dmi");
         }
 
         [Benchmark]
-        public static void WriteDMIFile()
+        public void WriteDMIFile()
         {
             using var file = new DMIFile(@"Data/Input/air_meter.dmi");
             file.Save(@"Data/Output/air_meter_temp.dmi");
         }
 
         [Benchmark]
-        public static void SortDMIFile()
+        public void SortDMIFile()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             file.SortStates();
@@ -36,7 +35,7 @@ namespace DMISharpBenchmark
         }
 
         [Benchmark]
-        public static void WriteAnimations()
+        public void WriteAnimations()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
@@ -49,7 +48,7 @@ namespace DMISharpBenchmark
         }
 
         [Benchmark]
-        public static void AnimationConstructDoesNotDisposeFrames()
+        public void AnimationConstructDoesNotDisposeFrames()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
@@ -68,7 +67,7 @@ namespace DMISharpBenchmark
         }
 
         [Benchmark]
-        public static void AnimationOfBarsignsConstructsCorrectly()
+        public void AnimationOfBarsignsConstructsCorrectly()
         {
             using var fs = System.IO.File.OpenWrite(@"Data/Output/thegreytide.gif");
             using var file = new DMIFile(@"Data/Input/barsigns.dmi");
@@ -77,7 +76,7 @@ namespace DMISharpBenchmark
         }
 
         [Benchmark]
-        public static void AnimationOfSingularityConstructsCorrectly()
+        public void AnimationOfSingularityConstructsCorrectly()
         {
             using var fs = System.IO.File.OpenWrite(@"Data/Output/singularity_s11.gif");
             using var file = new DMIFile(@"Data/Input/352x352.dmi");

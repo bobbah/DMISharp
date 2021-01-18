@@ -63,5 +63,12 @@ namespace DMISharpTests
             Assert.Equal(DirectionDepth.Four, carp.DirectionDepth);
             Assert.Equal(DirectionDepth.One, rareFrogDead.DirectionDepth);
         }
+
+        [Fact]
+        public void GoonTurfAnalysisDMIStateCount()
+        {
+            using var file = new DMIFile(@"Data/Input/turf_analysis_goon.dmi");
+            Assert.Equal(16, file.States.Count);
+        }
     }
 }

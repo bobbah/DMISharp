@@ -5,29 +5,22 @@
     <Authors>Bobbahbrown</Authors>
     <Company>MelonMesa</Company>
     <Description>Library for handling BYOND DMI files.</Description>
-    <Copyright>Copyright (c) 2020 MelonMesa</Copyright>
+    <Copyright>Copyright (c) 2021 MelonMesa</Copyright>
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.5.0.0</AssemblyVersion>
-    <Version>1.5.0</Version>
+    <AssemblyVersion>1.5.1.0</AssemblyVersion>
+    <Version>1.5.1</Version>
     <PackageIcon>dmisharp.png</PackageIcon>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-    <PackageReleaseNotes>- Updated package to .NET 5.0
-- Improved handling of pixel manipulation, improving time for DMI creation operations by up to 50% in some cases.
-- Added benchmarking project for testing
-- Cleaning and refactoring of some of the solution</PackageReleaseNotes>
-    <FileVersion>1.5.0.0</FileVersion>
+    <PackageReleaseNotes>- Fixed bug where valid DMI metadata header was not found in PNG text data</PackageReleaseNotes>
+    <FileVersion>1.5.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.4.3" />
-    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.2" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta11" />
   </ItemGroup>
