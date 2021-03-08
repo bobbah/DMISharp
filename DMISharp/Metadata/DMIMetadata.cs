@@ -66,7 +66,12 @@ namespace DMISharp.Metadata
                 throw new Exception("Failed to find BYOND DMI metadata in PNG text data!");
             }
 
+
+#if NETFRAMEWORK
+            metaDesc = metaDesc.Substring(metaDesc.IndexOf('#'));
+#else
             metaDesc = metaDesc[metaDesc.IndexOf('#')..];
+#endif
             return metaDesc.Split(new char[] { '\n', '\r' });
         }
 

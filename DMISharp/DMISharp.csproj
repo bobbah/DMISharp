@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFrameworks>net5.0;net472</TargetFrameworks>
     <Authors>Bobbahbrown</Authors>
     <Company>MelonMesa</Company>
     <Description>Library for handling BYOND DMI files.</Description>
@@ -17,6 +17,7 @@
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
     <PackageReleaseNotes>- Fixed bug where valid DMI metadata header was not found in PNG text data</PackageReleaseNotes>
     <FileVersion>1.5.1.0</FileVersion>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
