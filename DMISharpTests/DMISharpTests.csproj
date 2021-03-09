@@ -20,10 +20,6 @@
     <ProjectReference Include="..\DMISharp\DMISharp.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) AND '$(MSBuildRuntimeType)' == 'Core' AND '$(OS)' != 'Windows_NT'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
-  </ItemGroup>
-
   <ItemGroup>
     <None Update="Data\Input\352x352.dmi">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
