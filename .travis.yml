@@ -1,6 +1,8 @@
 language: csharp
 mono: none
-os: linux
+os:
+ - linux
+ - windows
 dist: focal
 dotnet: 5.0.201
 install:

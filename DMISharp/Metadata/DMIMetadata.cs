@@ -67,7 +67,7 @@ namespace DMISharp.Metadata
             }
 
 
-#if NETSTANDARD || NET461 || NET472
+#if NETSTANDARD
             metaDesc = metaDesc.Substring(metaDesc.IndexOf('#'));
 #else
             metaDesc = metaDesc[metaDesc.IndexOf('#')..];
