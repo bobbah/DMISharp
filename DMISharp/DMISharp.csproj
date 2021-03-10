@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net5.0;netstandard2.0;net461;net472</TargetFrameworks>
     <Authors>Bobbahbrown</Authors>
     <Company>MelonMesa</Company>
     <Description>Library for handling BYOND DMI files.</Description>
@@ -9,20 +9,23 @@
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.6.0.0</AssemblyVersion>
-    <Version>1.6.0</Version>
+    <AssemblyVersion>1.6.1.0</AssemblyVersion>
+    <Version>1.6.1</Version>
     <PackageIcon>dmisharp.png</PackageIcon>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-    <PackageReleaseNotes>- Added support for .NET Standard 2.0</PackageReleaseNotes>
-    <FileVersion>1.6.0.0</FileVersion>
+    <PackageReleaseNotes>
+      - Added support for .NET Framework 4.7.2 and .NET Framework 4.6.1
+      - Updated ImageSharp to 1.0.3
+    </PackageReleaseNotes>
+    <FileVersion>1.6.1.0</FileVersion>
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.4.3" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta11" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
