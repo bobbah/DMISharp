@@ -1,8 +1,8 @@
 language: csharp
-mono: latest
+mono: none
 os: linux
-dist: bionic
-dotnet: 5.0.100
+dist: focal
+dotnet: 5.0.201
 install:
  - dotnet restore
 script:
