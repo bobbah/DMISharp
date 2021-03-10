@@ -132,7 +132,7 @@ namespace DMISharp.Metadata
                 {
                     var processed = new List<double[]>();
 
-                    foreach (var (key, value) in cursor)
+                    foreach (var (_, value) in cursor)
                     {
                         processed.Add(value.Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
                     }

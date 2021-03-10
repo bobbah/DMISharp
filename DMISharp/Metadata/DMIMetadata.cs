@@ -162,8 +162,6 @@ namespace DMISharp.Metadata
                 // Iterate through each state
                 if (bodyData[line].StartsWith("state", StringComparison.InvariantCulture))
                 {
-                    var test = bodyData.Skip(line).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).ToList();
-
                     var toParse = new List<string>() { bodyData[line] };
                     toParse.AddRange(bodyData.Skip(line + 1).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)));
                     toReturn.Add(new StateMetadata(toParse));

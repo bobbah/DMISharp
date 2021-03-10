@@ -5,6 +5,7 @@ using System.Linq;
 
 namespace DMISharpBenchmark
 {
+    [MemoryDiagnoser]
     public class DMIBenchmarks
     {
         [Benchmark]

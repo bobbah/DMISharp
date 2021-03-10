@@ -328,6 +328,10 @@ namespace DMISharp
             {
                 throw new ArgumentException("Provided array of delays is longer than the state's number of frames.");
             }
+            else if (delay.Length == 0)
+            {
+                throw new ArgumentException("Provided array of delays is empty.");
+            }
             else if (startIndex < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be negative");
@@ -377,15 +381,12 @@ namespace DMISharp
         public void SetMovement(bool value)
         {
             if (value == Data.Movement) return;
-            else
+            if (value && Data.Delay == null)
             {
-                if (value && Data.Delay == null)
-                {
-                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting movement.");
-                }
-
-                Data.Movement = value;
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting movement.");
             }
+
+            Data.Movement = value;
         }
 
         /// <summary>
@@ -396,15 +397,12 @@ namespace DMISharp
         public void SetLoop(int value)
         {
             if (value == Data.Loop) return;
-            else
+            if (Data.Delay == null)
             {
-                if (Data.Delay == null)
-                {
-                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting loop.");
-                }
-
-                Data.Loop = value;
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting loop.");
             }
+
+            Data.Loop = value;
         }
 
         /// <summary>
@@ -414,15 +412,12 @@ namespace DMISharp
         public void SetRewind(bool value)
         {
             if (value == Data.Rewind) return;
-            else
+            if (Data.Delay == null)
             {
-                if (Data.Delay == null)
-                {
-                    throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting rewind.");
-                }
-
-                Data.Rewind = value;
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting rewind.");
             }
+
+            Data.Rewind = value;
         }
 
         #endregion
