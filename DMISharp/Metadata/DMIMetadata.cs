@@ -66,7 +66,12 @@ namespace DMISharp.Metadata
                 throw new Exception("Failed to find BYOND DMI metadata in PNG text data!");
             }
 
+
+#if NETSTANDARD
+            metaDesc = metaDesc.Substring(metaDesc.IndexOf('#'));
+#else
             metaDesc = metaDesc[metaDesc.IndexOf('#')..];
+#endif
             return metaDesc.Split(new char[] { '\n', '\r' });
         }
 
@@ -86,7 +91,7 @@ namespace DMISharp.Metadata
                 case 1:
                     try
                     {
-                        return double.Parse(possibleLines.First().Split(new char[] { '=', ' ' }).Last());
+                        return double.Parse(possibleLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
                     }
                     catch (FormatException e)
                     {
@@ -110,7 +115,7 @@ namespace DMISharp.Metadata
             {
                 try
                 {
-                    FrameWidth = int.Parse(widthLines.First().Split(new char[] { '=', ' ' }).Last());
+                    FrameWidth = int.Parse(widthLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (FormatException e)
                 {
@@ -127,7 +132,7 @@ namespace DMISharp.Metadata
             {
                 try
                 {
-                    FrameHeight = int.Parse(heightLines.First().Split(new char[] { '=', ' ' }).Last());
+                    FrameHeight = int.Parse(heightLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (FormatException e)
                 {

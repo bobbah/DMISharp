@@ -58,7 +58,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "dirs").First();
                 try
                 {
-                    Dirs = int.Parse(value);
+                    Dirs = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (FormatException e)
                 {
@@ -70,7 +70,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "frames").First();
                 try
                 {
-                    Frames = int.Parse(value);
+                    Frames = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (FormatException e)
                 {
@@ -82,7 +82,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "delay").First();
                 try
                 {
-                    Delay = value.Split(',').Select(x => double.Parse(x)).ToArray();
+                    Delay = value.Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
                 }
                 catch (FormatException e)
                 {
@@ -94,7 +94,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "rewind").First();
                 try
                 {
-                    Rewind = int.Parse(value) == 1;
+                    Rewind = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) == 1;
                 }
                 catch (FormatException e)
                 {
@@ -106,7 +106,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "movement").First();
                 try
                 {
-                    Movement = int.Parse(value) == 1;
+                    Movement = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) == 1;
                 }
                 catch (FormatException e)
                 {
@@ -118,7 +118,7 @@ namespace DMISharp.Metadata
                 var (key, value) = rowKV.Where(x => x.key == "loop").First();
                 try
                 {
-                    Loop = int.Parse(value);
+                    Loop = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (FormatException e)
                 {
@@ -134,7 +134,7 @@ namespace DMISharp.Metadata
 
                     foreach (var (key, value) in cursor)
                     {
-                        processed.Add(value.Split(',').Select(x => double.Parse(x)).ToArray());
+                        processed.Add(value.Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
                     }
                 }
                 catch (FormatException e)
