@@ -329,4 +329,7 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
 
-DMISharpBenchmark/Data/Output/
+# Don't track output results from benchmarks
+DMISharpBenchmark/Data/Output/*.png
+DMISharpBenchmark/Data/Output/*.gif
+DMISharpBenchmark/Data/Output/*.dmi
