@@ -25,6 +25,7 @@ namespace DMISharp.Metadata
             {
                 var line = _tokenizer.Current;
                 
+#if NETSTANDARD || NET472 || NET461
                 // Skip comments
                 if (line.StartsWith("#".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -40,7 +41,23 @@ namespace DMISharp.Metadata
                 // Extract key and value
                 _key = trimmedLine[..equalsIndex].TrimEnd(" ".AsSpan());
                 _value = trimmedLine[(equalsIndex + 1)..].Trim(" \"".AsSpan());
+#else
+                // Skip comments
+                if (line.StartsWith("#", StringComparison.OrdinalIgnoreCase))
+                    continue;
 
+                // Strip any whitespace
+                var trimmedLine = line.Trim("\n\t ");
+                
+                // Skip any lines without assignment
+                var equalsIndex = line.IndexOf("=", StringComparison.OrdinalIgnoreCase);
+                if (equalsIndex == -1)
+                    continue;
+                
+                // Extract key and value
+                _key = trimmedLine[..equalsIndex].TrimEnd(" ");
+                _value = trimmedLine[(equalsIndex + 1)..].Trim(" \"");
+#endif
                 return true;
             }
 
