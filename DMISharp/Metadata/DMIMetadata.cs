@@ -33,6 +33,10 @@ namespace DMISharp.Metadata
         /// <param name="stream"></param>
         public DMIMetadata(Stream stream)
         {
+            States = new List<StateMetadata>();
+            FrameWidth = -1;
+            FrameHeight = -1;
+            
             // Get each line of the DMI metadata
             var data = GetDMIData(ImageMetadataReader.ReadMetadata(stream));
             ParseMetadata(data);
@@ -75,13 +79,15 @@ namespace DMISharp.Metadata
             var tokenizer = new DMITokenizer(data);
             
             // Parse header
-            ParseHeader(ref tokenizer);
-            if (Version == 0d || FrameWidth == 0 || FrameHeight == 0)
-            {
+            var hasBody = ParseHeader(ref tokenizer);
+            if (Version == 0d)
                 throw new Exception("Failed to parse required header data of DMI file, this file may be corrupt.");
-            }
+
+            // Check for any additional data after the header
+            if (!hasBody)
+                return;
             
-            while (tokenizer.MoveNext())
+            do
             {
 #if NETSTANDARD || NET472 || NET461
                 // Handle any new states
@@ -94,6 +100,8 @@ namespace DMISharp.Metadata
                     {
                         State = tokenizer.CurrentValue.ToString()
                     };
+
+                    continue;
                 }
                 
                 // At this point if no state is present, then we have invalid data
@@ -105,7 +113,8 @@ namespace DMISharp.Metadata
                 {
                     try
                     {
-                        currentState.Dirs = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
+                        currentState.Dirs =
+                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
                     }
                     catch (FormatException e)
                     {
@@ -116,7 +125,8 @@ namespace DMISharp.Metadata
                 {
                     try
                     {
-                        currentState.Frames = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
+                        currentState.Frames =
+                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
                     }
                     catch (FormatException e)
                     {
@@ -139,7 +149,8 @@ namespace DMISharp.Metadata
                 {
                     try
                     {
-                        currentState.Rewind = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
+                        currentState.Rewind =
+                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
                     }
                     catch (FormatException e)
                     {
@@ -150,7 +161,8 @@ namespace DMISharp.Metadata
                 {
                     try
                     {
-                        currentState.Movement = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
+                        currentState.Movement =
+                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
                     }
                     catch (FormatException e)
                     {
@@ -161,7 +173,8 @@ namespace DMISharp.Metadata
                 {
                     try
                     {
-                        currentState.Loop = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
+                        currentState.Loop =
+                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
                     }
                     catch (FormatException e)
                     {
@@ -192,12 +205,14 @@ namespace DMISharp.Metadata
                     {
                         State = tokenizer.CurrentValue.ToString()
                     };
+
+                    continue;
                 }
-                
+
                 // At this point if no state is present, then we have invalid data
                 if (currentState == null)
                     throw new Exception("Started to read state data without a state, this file may be corrupt");
-                
+
                 // Handle value
                 if (tokenizer.CurrentKey.Equals("dirs", StringComparison.OrdinalIgnoreCase))
                 {
@@ -207,7 +222,9 @@ namespace DMISharp.Metadata
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to dirs from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to dirs from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("frames", StringComparison.OrdinalIgnoreCase))
@@ -218,7 +235,9 @@ namespace DMISharp.Metadata
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse number of frames from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse number of frames from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("delay", StringComparison.OrdinalIgnoreCase))
@@ -230,29 +249,37 @@ namespace DMISharp.Metadata
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse delay from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse delay from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("rewind", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
-                        currentState.Rewind = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
+                        currentState.Rewind =
+                            int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse rewind flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse rewind flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("movement", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
-                        currentState.Movement = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
+                        currentState.Movement =
+                            int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse movement flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse movement flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("loop", StringComparison.OrdinalIgnoreCase))
@@ -263,7 +290,9 @@ namespace DMISharp.Metadata
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse loop from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse loop from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
                 else if (tokenizer.CurrentKey.Equals("hotspot", StringComparison.OrdinalIgnoreCase))
@@ -276,14 +305,19 @@ namespace DMISharp.Metadata
                     }
                     catch (FormatException e)
                     {
-                        throw new FormatException($"Failed to parse hotspot from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
+                        throw new FormatException(
+                            $"Failed to parse hotspot from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
+                            e);
                     }
                 }
 #endif
-            }
+            } while (tokenizer.MoveNext());
+            
+            // Catch the last state
+            States.Add(currentState);
         }
 
-        private void ParseHeader(ref DMITokenizer tokenizer)
+        private bool ParseHeader(ref DMITokenizer tokenizer)
         {
             while (tokenizer.MoveNext())
             {
@@ -305,7 +339,7 @@ namespace DMISharp.Metadata
                 }
                 else if (tokenizer.CurrentKey.Equals("width".AsSpan(), StringComparison.OrdinalIgnoreCase))
                 {
-                    if (FrameWidth != 0d)
+                    if (FrameWidth != -1)
                         throw new Exception("Found more than one frame width line, this file may be corrupt!");
                     
                     try
@@ -319,7 +353,7 @@ namespace DMISharp.Metadata
                 }
                 else if (tokenizer.CurrentKey.Equals("height".AsSpan(), StringComparison.OrdinalIgnoreCase))
                 {
-                    if (FrameHeight != 0d)
+                    if (FrameHeight != -1)
                         throw new Exception("Found more than one frame height line, this file may be corrupt!");
                     
                     try
@@ -349,7 +383,7 @@ namespace DMISharp.Metadata
                 }
                 else if (tokenizer.CurrentKey.Equals("width", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (FrameWidth != 0d)
+                    if (FrameWidth != -1)
                         throw new Exception("Found more than one frame width line, this file may be corrupt!");
                     
                     try
@@ -363,7 +397,7 @@ namespace DMISharp.Metadata
                 }
                 else if (tokenizer.CurrentKey.Equals("height", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (FrameHeight != 0d)
+                    if (FrameHeight != -1)
                         throw new Exception("Found more than one frame height line, this file may be corrupt!");
                     
                     try
@@ -376,12 +410,13 @@ namespace DMISharp.Metadata
                     }
                 }
 #endif
-                // return on getting all necessary data
-                if (Version != 0d || FrameWidth != 0 || FrameHeight != 0)
+                else
                 {
-                    return;
+                    return true;
                 }
             }
+
+            return false;
         }
     }
 }

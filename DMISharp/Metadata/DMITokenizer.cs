@@ -34,13 +34,16 @@ namespace DMISharp.Metadata
                 var trimmedLine = line.Trim("\n\t ".AsSpan());
                 
                 // Skip any lines without assignment
-                var equalsIndex = line.IndexOf("=".AsSpan(), StringComparison.OrdinalIgnoreCase);
+                var equalsIndex = trimmedLine.IndexOf("=".AsSpan(), StringComparison.OrdinalIgnoreCase);
                 if (equalsIndex == -1)
                     continue;
                 
                 // Extract key and value
-                _key = trimmedLine[..equalsIndex].TrimEnd(" ".AsSpan());
-                _value = trimmedLine[(equalsIndex + 1)..].Trim(" \"".AsSpan());
+                _key = trimmedLine[..(equalsIndex - 1)].TrimEnd(" ".AsSpan());
+                _value = trimmedLine[(equalsIndex + 1)..].Trim(" ".AsSpan());
+                
+                // Trip any wrapping quotes if value is a string
+                _value = _value.Trim("\"".AsSpan());
 #else
                 // Skip comments
                 if (line.StartsWith("#", StringComparison.OrdinalIgnoreCase))
@@ -50,13 +53,16 @@ namespace DMISharp.Metadata
                 var trimmedLine = line.Trim("\n\t ");
                 
                 // Skip any lines without assignment
-                var equalsIndex = line.IndexOf("=", StringComparison.OrdinalIgnoreCase);
+                var equalsIndex = trimmedLine.IndexOf("=", StringComparison.OrdinalIgnoreCase);
                 if (equalsIndex == -1)
                     continue;
                 
                 // Extract key and value
-                _key = trimmedLine[..equalsIndex].TrimEnd(" ");
-                _value = trimmedLine[(equalsIndex + 1)..].Trim(" \"");
+                _key = trimmedLine[..(equalsIndex - 1)].TrimEnd(" ");
+                _value = trimmedLine[(equalsIndex + 1)..].Trim(" ");
+                
+                // Trip any wrapping quotes if value is a string
+                _value = _value.Trim("\"");
 #endif
                 return true;
             }

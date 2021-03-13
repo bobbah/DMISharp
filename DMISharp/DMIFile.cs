@@ -180,6 +180,7 @@ namespace DMISharp
                         {
                             Metadata.FrameHeight = img.Height / rows;
                             Metadata.FrameWidth = img.Width / (totalFrames / rows);
+                            break;
                         }
                     }
                 }
