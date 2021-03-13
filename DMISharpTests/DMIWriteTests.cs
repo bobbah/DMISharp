@@ -1,5 +1,6 @@
-﻿using DMISharp;
+﻿using System.IO;
 using System.Linq;
+using DMISharp;
 using Xunit;
 
 namespace DMISharpTests
@@ -27,9 +28,9 @@ namespace DMISharpTests
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
 
-            for (StateDirection dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
+            for (var dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
             {
-                using var fs = System.IO.File.OpenWrite($@"Data/Output/mushroom_gif_{dir}.gif");
+                using var fs = File.OpenWrite($@"Data/Output/mushroom_gif_{dir}.gif");
                 toTest.SaveAnimatedGIF(fs, dir);
             }
         }
@@ -43,15 +44,15 @@ namespace DMISharpTests
             using var file = new DMIFile(@"Data/Input/animal.dmi");
             var toTest = file.States.First(x => x.Name == "mushroom");
 
-            for (StateDirection dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
+            for (var dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
             {
-                using var fs = System.IO.File.OpenWrite($@"Data/Output/mushroom_A_{dir}.gif");
+                using var fs = File.OpenWrite($@"Data/Output/mushroom_A_{dir}.gif");
                 toTest.SaveAnimatedGIF(fs, dir);
             }
 
-            for (StateDirection dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
+            for (var dir = StateDirection.South; dir != StateDirection.SouthEast; dir++)
             {
-                using var fs = System.IO.File.OpenWrite($@"Data/Output/mushroom_B_{dir}.gif");
+                using var fs = File.OpenWrite($@"Data/Output/mushroom_B_{dir}.gif");
                 toTest.SaveAnimatedGIF(fs, dir);
             }
         }
@@ -59,7 +60,7 @@ namespace DMISharpTests
         [Fact]
         public void AnimationOfBarsignsConstructsCorrectly()
         {
-            using var fs = System.IO.File.OpenWrite(@"Data/Output/thegreytide.gif");
+            using var fs = File.OpenWrite(@"Data/Output/thegreytide.gif");
             using var file = new DMIFile(@"Data/Input/barsigns.dmi");
             var toTest = file.States.First(x => x.Name == "thegreytide");
             toTest.SaveAnimatedGIF(fs, StateDirection.South);
@@ -68,7 +69,7 @@ namespace DMISharpTests
         [Fact]
         public void AnimationOfSingularityConstructsCorrectly()
         {
-            using var fs = System.IO.File.OpenWrite(@"Data/Output/singularity_s11.gif");
+            using var fs = File.OpenWrite(@"Data/Output/singularity_s11.gif");
             using var file = new DMIFile(@"Data/Input/352x352.dmi");
             var toTest = file.States.First(x => x.Name == "singularity_s11");
             toTest.SaveAnimatedGIF(fs, StateDirection.South);

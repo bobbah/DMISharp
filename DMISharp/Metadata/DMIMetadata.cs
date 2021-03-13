@@ -1,10 +1,9 @@
-﻿using MetadataExtractor;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
+using MetadataExtractor;
+using Directory = MetadataExtractor.Directory;
 
 namespace DMISharp.Metadata
 {
@@ -13,24 +12,8 @@ namespace DMISharp.Metadata
     /// </summary>
     public class DMIMetadata
     {
-        /// <summary>
-        /// The version of the DMI metadata, dictated by BYOND
-        /// </summary>
-        public double Version { get; private set; }
-        
-        /// <summary>
-        /// The width of each frame in the DMI file, can be -1 indicating the frames are square.
-        /// </summary>
-        public int FrameWidth { get; internal set; }
-        
-        /// <summary>
-        /// The height of each frame in the DMI file, can be -1 indicating the frames are square.
-        /// </summary>
-        public int FrameHeight { get; internal set; }
-        public List<StateMetadata> States { get; }
-        
         private static readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI", RegexOptions.Compiled);
-        
+
         public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
         {
             Version = byondVersion;
@@ -55,11 +38,28 @@ namespace DMISharp.Metadata
         }
 
         /// <summary>
+        /// The version of the DMI metadata, dictated by BYOND
+        /// </summary>
+        public double Version { get; private set; }
+
+        /// <summary>
+        /// The width of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
+        public int FrameWidth { get; internal set; }
+
+        /// <summary>
+        /// The height of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
+        public int FrameHeight { get; internal set; }
+
+        public List<StateMetadata> States { get; }
+
+        /// <summary>
         /// Gets a collection of DMI metadata directories and breaks it into individual lines of DMI metadata
         /// </summary>
         /// <param name="directories">The metadata directories to search</param>
         /// <returns>A ReadOnlySpan of the DMI's metadata if found</returns>
-        private static ReadOnlySpan<char> GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
+        private static ReadOnlySpan<char> GetDMIData(IEnumerable<Directory> directories)
         {
             string metaDesc = null;
             foreach (var t in directories)

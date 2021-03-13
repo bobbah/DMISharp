@@ -1,5 +1,5 @@
-using DMISharp;
 using System.Linq;
+using DMISharp;
 using Xunit;
 
 namespace DMISharpTests

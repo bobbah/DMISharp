@@ -89,7 +89,7 @@ namespace DMISharp.Metadata
         public ReadOnlySpan<char> CurrentKey
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this._key;
+            get => _key;
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace DMISharp.Metadata
         public ReadOnlySpan<char> CurrentValue
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this._value;
+            get => _value;
         }
 
         /// <summary>

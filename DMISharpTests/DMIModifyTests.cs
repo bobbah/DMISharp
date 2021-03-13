@@ -1,5 +1,5 @@
-﻿using DMISharp;
-using System.Linq;
+﻿using System.Linq;
+using DMISharp;
 using Xunit;
 
 namespace DMISharpTests
@@ -22,7 +22,7 @@ namespace DMISharpTests
             Assert.True(result);
             Assert.Equal(mdCount - 1, file.Metadata.States.Count);
         }
-        
+
         [Fact]
         public static void ShouldDetectValidUnmodifiedDMIState()
         {
@@ -35,7 +35,7 @@ namespace DMISharpTests
             // Assert
             Assert.True(arrowState.IsReadyForSave());
         }
-        
+
         [Fact]
         public static void ShouldDetectInvalidDMIState__MissingFrame()
         {
@@ -50,7 +50,7 @@ namespace DMISharpTests
             Assert.False(arrowState.IsReadyForSave());
             Assert.False(file.CanSave());
         }
-        
+
         [Fact]
         public static void ShouldDetectInvalidDMIState__MissingDirection()
         {

@@ -1,12 +1,12 @@
-﻿using DMISharp.Metadata;
+﻿using System;
+using System.IO;
+using System.Linq;
+using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Quantization;
-using System;
-using System.IO;
-using System.Linq;
 
 namespace DMISharp
 {
@@ -44,15 +44,6 @@ namespace DMISharp
     /// </summary>
     public sealed class DMIState : IDisposable
     {
-        public string Name { get => Data.State; set => Data.State = value; }
-        public int Dirs => Data.Dirs;
-        public int Frames => Data.Frames;
-        public int Height { get; private set; }
-        public int Width { get; private set; }
-        public int TotalFrames => _Images.Sum(x => x.Count(y => y != null));
-        public int FrameCapacity => _Images.Sum(x => x.Length);
-        public DirectionDepth DirectionDepth { get; private set; }
-        public StateMetadata Data { get; private set; } // Stores key, value pairs from DMI file metadata.
         private Image<Rgba32>[][] _Images; // Stores each frame image following the [direction][frame] pattern.
 
         /// <summary>
@@ -71,7 +62,7 @@ namespace DMISharp
             Width = frameWidth;
             Height = frameHeight;
 
-            for (int dir = 0; dir < Dirs; dir++)
+            for (var dir = 0; dir < Dirs; dir++)
             {
                 _Images[dir] = new Image<Rgba32>[Frames];
             }
@@ -105,6 +96,27 @@ namespace DMISharp
             DirectionDepth = (DirectionDepth)_Images.Length;
         }
 
+        public string Name { get => Data.State; set => Data.State = value; }
+        public int Dirs => Data.Dirs;
+        public int Frames => Data.Frames;
+        public int Height { get; private set; }
+        public int Width { get; private set; }
+        public int TotalFrames => _Images.Sum(x => x.Count(y => y != null));
+        public int FrameCapacity => _Images.Sum(x => x.Length);
+        public DirectionDepth DirectionDepth { get; private set; }
+        public StateMetadata Data { get; private set; } // Stores key, value pairs from DMI file metadata.
+
+        /// <summary>
+        /// Ensure when the DMI State is diposed of that all images are properly disposed of.
+        /// </summary>
+        public void Dispose()
+        {
+            foreach (var image in _Images.SelectMany(x => x).Where(x => x != null))
+            {
+                image.Dispose();
+            }
+        }
+
         /// <summary>
         /// Separates individual frames from a given source image.
         /// </summary>
@@ -122,7 +134,7 @@ namespace DMISharp
             int currDir = 0, currFrame = 0;
 
             // Create dirs
-            for (int dir = 0; dir < Dirs; dir++)
+            for (var dir = 0; dir < Dirs; dir++)
             {
                 images[dir] = new Image<Rgba32>[Frames];
             }
@@ -151,11 +163,11 @@ namespace DMISharp
                     var frame = new Image<Rgba32>(width, height);
                     var xOffset = currWIndex * width;
                     var yOffset = currHIndex * height;
-                    for (int ypx = 0; ypx < height; ypx++)
+                    for (var ypx = 0; ypx < height; ypx++)
                     {
-                        Span<Rgba32> sourceSpan = source.GetPixelRowSpan(ypx + yOffset);
-                        Span<Rgba32> frameSpan = frame.GetPixelRowSpan(ypx);
-                        for (int xpx = 0; xpx < width; xpx++)
+                        var sourceSpan = source.GetPixelRowSpan(ypx + yOffset);
+                        var frameSpan = frame.GetPixelRowSpan(ypx);
+                        for (var xpx = 0; xpx < width; xpx++)
                         {
                             frameSpan[xpx] = sourceSpan[xpx + xOffset];
                         }
@@ -194,7 +206,7 @@ namespace DMISharp
             var toReturn = new Image<Rgba32>[Dirs];
 
             // Iterate through each direction and create an animation.
-            for (int dir = 0; dir < Dirs; dir++)
+            for (var dir = 0; dir < Dirs; dir++)
             {
                 toReturn[dir] = GetAnimated((StateDirection)dir);
             }
@@ -220,7 +232,7 @@ namespace DMISharp
 
             // Develop gif
             var toReturn = new Image<Rgba32>(Width, Height);
-            for (int frame = 0; frame < Frames; frame++)
+            for (var frame = 0; frame < Frames; frame++)
             {
                 var cursor = _Images[(int)direction][frame];
                 var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
@@ -263,164 +275,6 @@ namespace DMISharp
             using var img = GetAnimated(direction);
             img.SaveAsGif(stream, encoder);
         }
-
-        #region Animation Attributes
-
-        /// <summary>
-        /// Initializes the delay array for a state, 'creates' an animated state.
-        /// </summary>
-        public void InitializeDelay()
-        {
-            if (Data.Delay == null)
-            {
-                Data.Delay = new double[Frames];
-
-                for (int frame = 0; frame < Frames; frame++)
-                {
-                    Data.Delay[frame] = 1.0;
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException("This state is already initialized for animations.");
-            }
-        }
-
-        /// <summary>
-        /// Destroys the delay array for a state, 'destroys' an animated state.
-        /// </summary>
-        public void ClearDelay()
-        {
-            if (Data.Delay != null)
-            {
-                Data.Delay = null;
-            }
-            else
-            {
-                throw new InvalidOperationException("This state has no initialized delay for animations.");
-            }
-        }
-
-        /// <summary>
-        /// Sets the delay for a frame with a provided array between a pair of indices.
-        /// </summary>
-        /// <param name="delay">The array of delay values to set</param>
-        /// <param name="startIndex">The zero-based starting index of the desired frame</param>
-        /// <param name="endIndex">The zero-based ending index of the desired frame, defaults to the end of the delay index.</param>
-        /// <remarks>This will intialize the animated state if required.</remarks>
-        public void SetDelay(double[] delay, int startIndex = 0, int endIndex = -1)
-        {
-            if (endIndex == -1) endIndex = Frames - 1;
-
-            // If delay is null, at this point we can initialize it
-            if (Data.Delay == null)
-            {
-                InitializeDelay();
-            }
-
-            if (delay is null)
-            {
-                throw new ArgumentNullException(nameof(delay));
-            }
-
-            // Catch invalid array sizes
-            if (delay.Length > Data.Delay.Length - startIndex)
-            {
-                throw new ArgumentException("Provided array of delays is longer than the state's number of frames.");
-            }
-            else if (delay.Length == 0)
-            {
-                throw new ArgumentException("Provided array of delays is empty.");
-            }
-            else if (startIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be negative");
-            }
-            else if (startIndex > endIndex)
-            {
-                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be greater than ending index.");
-            }
-
-            for (int frame = startIndex; frame <= endIndex; frame++)
-            {
-                Data.Delay[frame] = delay[frame];
-            }
-        }
-
-        /// <summary>
-        /// Sets the delay for an individual frame
-        /// </summary>
-        /// <param name="frame">The zero-based frame index to set delay for</param>
-        /// <param name="delay">The delay value</param>
-        /// <remarks>This will intialize the animated state if required.</remarks>
-        public void SetDelay(int frame, double delay)
-        {
-            // If delay is null, at this point we can initialize it
-            if (Data.Delay == null)
-            {
-                InitializeDelay();
-            }
-
-            // Catch invalid array sizes
-            if (frame >= Frames)
-            {
-                throw new ArgumentException("Provided frame index is greater than the number of frames in this state.");
-            }
-            else if (frame < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(frame), "Frame index cannot be negative");
-            }
-
-            Data.Delay[frame] = delay;
-        }
-
-        /// <summary>
-        /// Sets the movement attribute on this DMI state
-        /// </summary>
-        /// <param name="value">The desired value</param>
-        public void SetMovement(bool value)
-        {
-            if (value == Data.Movement) return;
-            if (value && Data.Delay == null)
-            {
-                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting movement.");
-            }
-
-            Data.Movement = value;
-        }
-
-        /// <summary>
-        /// Sets the number of times to loop the animation on this DMI state
-        /// </summary>
-        /// <param name="value">The number of times to loop this animation</param>
-        /// <remarks>A value of zero will loop infinitely</remarks>
-        public void SetLoop(int value)
-        {
-            if (value == Data.Loop) return;
-            if (Data.Delay == null)
-            {
-                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting loop.");
-            }
-
-            Data.Loop = value;
-        }
-
-        /// <summary>
-        /// Sets the rewind attribute on this DMI state
-        /// </summary>
-        /// <param name="value">The desired value</param>
-        public void SetRewind(bool value)
-        {
-            if (value == Data.Rewind) return;
-            if (Data.Delay == null)
-            {
-                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting rewind.");
-            }
-
-            Data.Rewind = value;
-        }
-
-        #endregion
 
         /// <summary>
         /// Retrieves a frame from a state
@@ -505,7 +359,7 @@ namespace DMISharp
             {
                 var minDepth = Math.Min((int)depth, (int)DirectionDepth);
                 var temp = new Image<Rgba32>[(int)depth][];
-                for (int i = 0; i < minDepth; i++)
+                for (var i = 0; i < minDepth; i++)
                 {
                     temp[i] = _Images[i];
                 }
@@ -513,9 +367,9 @@ namespace DMISharp
                 // Dispose of images outside of our new dirs
                 if (depth < DirectionDepth)
                 {
-                    for (int i = (int)depth; i < (int)DirectionDepth; i++)
+                    for (var i = (int)depth; i < (int)DirectionDepth; i++)
                     {
-                        for (int j = 0; j < Frames; j++)
+                        for (var j = 0; j < Frames; j++)
                         {
                             var cursor = _Images[i][j];
                             cursor.Dispose();
@@ -526,7 +380,7 @@ namespace DMISharp
                 // Insert empty arrays for extra new dirs if available
                 if (depth > DirectionDepth)
                 {
-                    for (int i = (int)DirectionDepth; i < (int)depth; i++)
+                    for (var i = (int)DirectionDepth; i < (int)depth; i++)
                     {
                         temp[i] = new Image<Rgba32>[Frames];
                     }
@@ -549,10 +403,10 @@ namespace DMISharp
                 var temp = new Image<Rgba32>[Dirs][];
                 var minFrames = Math.Min(Frames, frames);
 
-                for (int dir = 0; dir < Dirs; dir++)
+                for (var dir = 0; dir < Dirs; dir++)
                 {
                     temp[dir] = new Image<Rgba32>[frames];
-                    for (int i = 0; i < minFrames; i++)
+                    for (var i = 0; i < minFrames; i++)
                     {
                         temp[dir][i] = _Images[dir][i];
                     }
@@ -560,7 +414,7 @@ namespace DMISharp
                     // Dispose of frames that we are no longer tracking ("lost" frames)
                     if (frames < Frames)
                     {
-                        for (int i = minFrames; i < Frames; i++)
+                        for (var i = minFrames; i < Frames; i++)
                         {
                             _Images[dir][i].Dispose();
                         }
@@ -590,15 +444,162 @@ namespace DMISharp
             return true;
         }
 
+        #region Animation Attributes
+
         /// <summary>
-        /// Ensure when the DMI State is diposed of that all images are properly disposed of.
+        /// Initializes the delay array for a state, 'creates' an animated state.
         /// </summary>
-        public void Dispose()
+        public void InitializeDelay()
         {
-            foreach (var image in _Images.SelectMany(x => x).Where(x => x != null))
+            if (Data.Delay == null)
             {
-                image.Dispose();
+                Data.Delay = new double[Frames];
+
+                for (var frame = 0; frame < Frames; frame++)
+                {
+                    Data.Delay[frame] = 1.0;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("This state is already initialized for animations.");
             }
         }
+
+        /// <summary>
+        /// Destroys the delay array for a state, 'destroys' an animated state.
+        /// </summary>
+        public void ClearDelay()
+        {
+            if (Data.Delay != null)
+            {
+                Data.Delay = null;
+            }
+            else
+            {
+                throw new InvalidOperationException("This state has no initialized delay for animations.");
+            }
+        }
+
+        /// <summary>
+        /// Sets the delay for a frame with a provided array between a pair of indices.
+        /// </summary>
+        /// <param name="delay">The array of delay values to set</param>
+        /// <param name="startIndex">The zero-based starting index of the desired frame</param>
+        /// <param name="endIndex">The zero-based ending index of the desired frame, defaults to the end of the delay index.</param>
+        /// <remarks>This will intialize the animated state if required.</remarks>
+        public void SetDelay(double[] delay, int startIndex = 0, int endIndex = -1)
+        {
+            if (endIndex == -1) endIndex = Frames - 1;
+
+            // If delay is null, at this point we can initialize it
+            if (Data.Delay == null)
+            {
+                InitializeDelay();
+            }
+
+            if (delay is null)
+            {
+                throw new ArgumentNullException(nameof(delay));
+            }
+
+            // Catch invalid array sizes
+            if (delay.Length > Data.Delay.Length - startIndex)
+            {
+                throw new ArgumentException("Provided array of delays is longer than the state's number of frames.");
+            }
+            else if (delay.Length == 0)
+            {
+                throw new ArgumentException("Provided array of delays is empty.");
+            }
+            else if (startIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be negative");
+            }
+            else if (startIndex > endIndex)
+            {
+                throw new ArgumentOutOfRangeException(nameof(startIndex), "Starting index cannot be greater than ending index.");
+            }
+
+            for (var frame = startIndex; frame <= endIndex; frame++)
+            {
+                Data.Delay[frame] = delay[frame];
+            }
+        }
+
+        /// <summary>
+        /// Sets the delay for an individual frame
+        /// </summary>
+        /// <param name="frame">The zero-based frame index to set delay for</param>
+        /// <param name="delay">The delay value</param>
+        /// <remarks>This will intialize the animated state if required.</remarks>
+        public void SetDelay(int frame, double delay)
+        {
+            // If delay is null, at this point we can initialize it
+            if (Data.Delay == null)
+            {
+                InitializeDelay();
+            }
+
+            // Catch invalid array sizes
+            if (frame >= Frames)
+            {
+                throw new ArgumentException("Provided frame index is greater than the number of frames in this state.");
+            }
+            else if (frame < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(frame), "Frame index cannot be negative");
+            }
+
+            Data.Delay[frame] = delay;
+        }
+
+        /// <summary>
+        /// Sets the movement attribute on this DMI state
+        /// </summary>
+        /// <param name="value">The desired value</param>
+        public void SetMovement(bool value)
+        {
+            if (value == Data.Movement) return;
+            if (value && Data.Delay == null)
+            {
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting movement.");
+            }
+
+            Data.Movement = value;
+        }
+
+        /// <summary>
+        /// Sets the number of times to loop the animation on this DMI state
+        /// </summary>
+        /// <param name="value">The number of times to loop this animation</param>
+        /// <remarks>A value of zero will loop infinitely</remarks>
+        public void SetLoop(int value)
+        {
+            if (value == Data.Loop) return;
+            if (Data.Delay == null)
+            {
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting loop.");
+            }
+
+            Data.Loop = value;
+        }
+
+        /// <summary>
+        /// Sets the rewind attribute on this DMI state
+        /// </summary>
+        /// <param name="value">The desired value</param>
+        public void SetRewind(bool value)
+        {
+            if (value == Data.Rewind) return;
+            if (Data.Delay == null)
+            {
+                throw new InvalidOperationException("This state's delay is uninitialized, ensure this is an animated state before setting rewind.");
+            }
+
+            Data.Rewind = value;
+        }
+
+        #endregion
     }
 }
