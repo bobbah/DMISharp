@@ -101,18 +101,32 @@ namespace DMISharp.Metadata
             get => this._value;
         }
 
+        /// <summary>
+        /// Determines if the current key token is equal to some value
+        /// </summary>
+        /// <param name="value">The value to compare against</param>
+        /// <returns>If the two values are equal</returns>
         public bool KeyEquals(ReadOnlySpan<char> value)
         {
             return CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
         }
         
 #if NETSTANDARD || NET472 || NET461
+        /// <summary>
+        /// Determines if the current key token is equal to some value
+        /// </summary>
+        /// <param name="value">The value to compare against</param>
+        /// <returns>If the two values are equal</returns>
         public bool KeyEquals(string value)
         {
             return KeyEquals(value.AsSpan());
         }
 #endif
 
+        /// <summary>
+        /// Attempts to return the current value token as an integer.
+        /// </summary>
+        /// <returns>The current value token as an integer</returns>
         public int ValueAsInt()
         {
 #if NETSTANDARD || NET472 || NET461
@@ -131,6 +145,10 @@ namespace DMISharp.Metadata
             }
         }
 
+        /// <summary>
+        /// Attempts to return the current value token as a double.
+        /// </summary>
+        /// <returns>The current value token as a double</returns>
         public double ValueAsDouble()
         {
 #if NETSTANDARD || NET472 || NET461
@@ -149,11 +167,19 @@ namespace DMISharp.Metadata
             }
         }
 
+        /// <summary>
+        /// Attempts to return the current value token as a bool.
+        /// </summary>
+        /// <returns>The current value token as a bool</returns>
         public bool ValueAsBool()
         {
             return ValueAsInt() == 1;
         }
         
+        /// <summary>
+        /// Attempts to return the current value token as an array of doubles.
+        /// </summary>
+        /// <returns>The current value token as an array of doubles</returns>
         public double[] ValueAsDoubleArray()
         {
             try
@@ -167,6 +193,10 @@ namespace DMISharp.Metadata
             }
         }
         
+        /// <summary>
+        /// Attempts to return the current value token as an array of ints.
+        /// </summary>
+        /// <returns>The current value token as an array of ints</returns>
         public int[] ValueAsIntArray()
         {
             try
