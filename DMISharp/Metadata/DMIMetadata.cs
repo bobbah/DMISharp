@@ -13,10 +13,22 @@ namespace DMISharp.Metadata
     /// </summary>
     public class DMIMetadata
     {
-        public double Version { get; private set; } // BYOND version
+        /// <summary>
+        /// The version of the DMI metadata, dictated by BYOND
+        /// </summary>
+        public double Version { get; private set; }
+        
+        /// <summary>
+        /// The width of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
         public int FrameWidth { get; internal set; }
+        
+        /// <summary>
+        /// The height of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
         public int FrameHeight { get; internal set; }
         public List<StateMetadata> States { get; }
+        
         private static readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI", RegexOptions.Compiled);
         
         public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
@@ -30,7 +42,7 @@ namespace DMISharp.Metadata
         /// <summary>
         /// Instantiates a DMIMetadata object from a file stream of that DMI file
         /// </summary>
-        /// <param name="stream"></param>
+        /// <param name="stream">The data stream to read from</param>
         public DMIMetadata(Stream stream)
         {
             States = new List<StateMetadata>();
@@ -46,7 +58,7 @@ namespace DMISharp.Metadata
         /// Gets a collection of DMI metadata directories and breaks it into individual lines of DMI metadata
         /// </summary>
         /// <param name="directories">The metadata directories to search</param>
-        /// <returns>An array of strings representing the lines of the DMI data</returns>
+        /// <returns>A ReadOnlySpan of the DMI's metadata if found</returns>
         private static ReadOnlySpan<char> GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
         {
             string metaDesc = null;
@@ -73,6 +85,10 @@ namespace DMISharp.Metadata
             return metaDesc.AsSpan()[metaDesc.IndexOf('#')..];
         }
 
+        /// <summary>
+        /// Attempts to apply all data from the provided metadata to this DMIMetadata object
+        /// </summary>
+        /// <param name="data">The metadata string to parse</param>
         private void ParseMetadata(ReadOnlySpan<char> data)
         {
             StateMetadata currentState = null;
@@ -317,6 +333,11 @@ namespace DMISharp.Metadata
             States.Add(currentState);
         }
 
+        /// <summary>
+        /// Attempts to parse the header data (version, frame size) to this DMIMetadata object
+        /// </summary>
+        /// <param name="tokenizer">The tokenizer containing the data</param>
+        /// <returns>True if more data (states) follows, false if no data is found after the header</returns>
         private bool ParseHeader(ref DMITokenizer tokenizer)
         {
             while (tokenizer.MoveNext())

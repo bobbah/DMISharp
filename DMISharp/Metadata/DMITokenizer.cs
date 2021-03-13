@@ -5,12 +5,19 @@ using Microsoft.Toolkit.HighPerformance.Extensions;
 
 namespace DMISharp.Metadata
 {
+    /// <summary>
+    /// Ref struct for tokenizing a DMI's metadata text into key and value pairs using ReadOnlySpans
+    /// </summary>
     public ref struct DMITokenizer
     {
         private ReadOnlySpanTokenizer<char> _tokenizer;
         private ReadOnlySpan<char> _key;
         private ReadOnlySpan<char> _value;
 
+        /// <summary>
+        /// Instantiate a new DMITokenizer to tokenize a provided ReadOnlySpan
+        /// </summary>
+        /// <param name="data">The span to tokenize into key, value pairs</param>
         public DMITokenizer(ReadOnlySpan<char> data)
         {
             _tokenizer = data.Tokenize('\n');
@@ -18,6 +25,10 @@ namespace DMISharp.Metadata
             _value = ReadOnlySpan<char>.Empty;
         }
 
+        /// <summary>
+        /// Attempts to get the next key, value pair.
+        /// </summary>
+        /// <returns>True if an additional pair is found, false otherwise.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -70,12 +81,18 @@ namespace DMISharp.Metadata
             return false;
         }
         
+        /// <summary>
+        /// The current token key
+        /// </summary>
         public ReadOnlySpan<char> CurrentKey
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this._key;
         }
 
+        /// <summary>
+        /// The current token value
+        /// </summary>
         public ReadOnlySpan<char> CurrentValue
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

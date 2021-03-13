@@ -16,7 +16,7 @@ namespace DMISharp
     /// </summary>
     public class DMIFile : IDisposable, IExportable
     {
-        public DMIMetadata Metadata { get; private set; }
+        public DMIMetadata Metadata { get; }
         private List<DMIState> _states;
         private bool _disposedValue;
         public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
