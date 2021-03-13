@@ -1,4 +1,6 @@
 using System;
+using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Microsoft.Toolkit.HighPerformance.Enumerables;
 using Microsoft.Toolkit.HighPerformance.Extensions;
@@ -97,6 +99,85 @@ namespace DMISharp.Metadata
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this._value;
+        }
+
+        public bool KeyEquals(ReadOnlySpan<char> value)
+        {
+            return CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
+        }
+        
+#if NETSTANDARD || NET472 || NET461
+        public bool KeyEquals(string value)
+        {
+            return KeyEquals(value.AsSpan());
+        }
+#endif
+
+        public int ValueAsInt()
+        {
+#if NETSTANDARD || NET472 || NET461
+            var currentValue = CurrentValue.ToString();
+#else
+            var currentValue = CurrentValue;
+#endif
+            
+            try
+            {
+                return int.Parse(currentValue, provider: CultureInfo.InvariantCulture);
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"Failed to parse int {CurrentKey.ToString()} from line: \"{CurrentValue.ToString()}\"", e);
+            }
+        }
+
+        public double ValueAsDouble()
+        {
+#if NETSTANDARD || NET472 || NET461
+            var currentValue = CurrentValue.ToString();
+#else
+            var currentValue = CurrentValue;
+#endif
+
+            try
+            {
+                return double.Parse(currentValue, provider: CultureInfo.InvariantCulture);
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"Failed to parse double {CurrentKey.ToString()} from line: \"{CurrentValue.ToString()}\"", e);
+            }
+        }
+
+        public bool ValueAsBool()
+        {
+            return ValueAsInt() == 1;
+        }
+        
+        public double[] ValueAsDoubleArray()
+        {
+            try
+            {
+                return CurrentValue.ToString().Split(',')
+                    .Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"Failed to parse double array {CurrentKey.ToString()} from line: \"{CurrentValue.ToString()}\"", e);
+            }
+        }
+        
+        public int[] ValueAsIntArray()
+        {
+            try
+            {
+                return CurrentValue.ToString().Split(',')
+                    .Select(x => int.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+            }
+            catch (FormatException e)
+            {
+                throw new FormatException($"Failed to parse int array {CurrentKey.ToString()} from line: \"{CurrentValue.ToString()}\"", e);
+            }
         }
     }
 }

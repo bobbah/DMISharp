@@ -105,9 +105,8 @@ namespace DMISharp.Metadata
             
             do
             {
-#if NETSTANDARD || NET472 || NET461
                 // Handle any new states
-                if (tokenizer.CurrentKey.Equals("state".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                if (tokenizer.KeyEquals("state"))
                 {
                     if (currentState != null)
                         States.Add(currentState);
@@ -125,208 +124,23 @@ namespace DMISharp.Metadata
                     throw new Exception("Started to read state data without a state, this file may be corrupt");
                 
                 // Handle value
-                if (tokenizer.CurrentKey.Equals("dirs".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                if (tokenizer.KeyEquals("dirs"))
+                    currentState.Dirs = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("frames"))
+                    currentState.Frames = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("rewind"))
+                    currentState.Rewind = tokenizer.ValueAsBool();
+                else if (tokenizer.KeyEquals("movement"))
+                    currentState.Movement = tokenizer.ValueAsBool();
+                else if (tokenizer.KeyEquals("loop"))
+                    currentState.Loop = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("delay"))
+                    currentState.Delay = tokenizer.ValueAsDoubleArray();
+                else if (tokenizer.KeyEquals("hotspot"))
                 {
-                    try
-                    {
-                        currentState.Dirs =
-                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to dirs from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
+                    currentState.Hotspots ??= new List<int[]>();
+                    currentState.Hotspots.Add(tokenizer.ValueAsIntArray());
                 }
-                else if (tokenizer.CurrentKey.Equals("frames".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Frames =
-                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse number of frames from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("delay".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Delay = tokenizer.CurrentValue.ToString().Split(',')
-                            .Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse delay from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("rewind".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Rewind =
-                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse rewind flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("movement".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Movement =
-                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture) == 1;
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse movement flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("loop".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Loop =
-                            int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse loop from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("hotspot".AsSpan(), StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Hotspots ??= new List<int[]>();
-                        currentState.Hotspots.Add(tokenizer.CurrentValue.ToString().Split(',')
-                            .Select(x => int.Parse(x, CultureInfo.InvariantCulture)).ToArray());
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse hotspot from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'", e);
-                    }
-                }
-#else
-                // Handle any new states
-                if (tokenizer.CurrentKey.Equals("state", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (currentState != null)
-                        States.Add(currentState);
-
-                    currentState = new StateMetadata()
-                    {
-                        State = tokenizer.CurrentValue.ToString()
-                    };
-
-                    continue;
-                }
-
-                // At this point if no state is present, then we have invalid data
-                if (currentState == null)
-                    throw new Exception("Started to read state data without a state, this file may be corrupt");
-
-                // Handle value
-                if (tokenizer.CurrentKey.Equals("dirs", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Dirs = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to dirs from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("frames", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Frames = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse number of frames from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("delay", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Delay = tokenizer.CurrentValue.ToString().Split(',')
-                            .Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse delay from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("rewind", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Rewind =
-                            int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse rewind flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("movement", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Movement =
-                            int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture) == 1;
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse movement flag from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("loop", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Loop = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse loop from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("hotspot", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        currentState.Hotspots ??= new List<int[]>();
-                        currentState.Hotspots.Add(tokenizer.CurrentValue.ToString().Split(',')
-                            .Select(x => int.Parse(x, CultureInfo.InvariantCulture)).ToArray());
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException(
-                            $"Failed to parse hotspot from line '{tokenizer.CurrentValue.ToString()}' in state '{currentState.State}'",
-                            e);
-                    }
-                }
-#endif
             } while (tokenizer.MoveNext());
             
             // Catch the last state
@@ -342,95 +156,27 @@ namespace DMISharp.Metadata
         {
             while (tokenizer.MoveNext())
             {
-#if NETSTANDARD || NET472 || NET461
-// Handle value
-                if (tokenizer.CurrentKey.Equals("version".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                if (tokenizer.KeyEquals("version"))
                 {
                     if (Version != 0d)
                         throw new Exception("Found more than one version line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        Version = double.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse version number from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
+
+                    Version = tokenizer.ValueAsDouble();
                 }
-                else if (tokenizer.CurrentKey.Equals("width".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                else if (tokenizer.KeyEquals("width"))
                 {
                     if (FrameWidth != -1)
                         throw new Exception("Found more than one frame width line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        FrameWidth = int.Parse(tokenizer.CurrentValue.ToString(), provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse frame width from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
+
+                    FrameWidth = tokenizer.ValueAsInt();
                 }
-                else if (tokenizer.CurrentKey.Equals("height".AsSpan(), StringComparison.OrdinalIgnoreCase))
+                else if (tokenizer.KeyEquals("height"))
                 {
                     if (FrameHeight != -1)
                         throw new Exception("Found more than one frame height line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        FrameHeight = int.Parse(tokenizer.CurrentValue.ToString());
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse frame height from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
+
+                    FrameHeight = tokenizer.ValueAsInt();
                 }
-#else
-                // Handle value
-                if (tokenizer.CurrentKey.Equals("version", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (Version != 0d)
-                        throw new Exception("Found more than one version line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        Version = double.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse version number from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("width", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (FrameWidth != -1)
-                        throw new Exception("Found more than one frame width line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        FrameWidth = int.Parse(tokenizer.CurrentValue, provider: CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse frame width from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
-                }
-                else if (tokenizer.CurrentKey.Equals("height", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (FrameHeight != -1)
-                        throw new Exception("Found more than one frame height line, this file may be corrupt!");
-                    
-                    try
-                    {
-                        FrameHeight = int.Parse(tokenizer.CurrentValue);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse frame height from line:\n{tokenizer.CurrentValue.ToString()}", e);
-                    }
-                }
-#endif
                 else
                 {
                     return true;
