@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
-using MetadataExtractor;
+using MetadataExtractor.Formats.Png;
 using Directory = MetadataExtractor.Directory;
 
 namespace DMISharp.Metadata
@@ -32,8 +32,8 @@ namespace DMISharp.Metadata
             FrameWidth = -1;
             FrameHeight = -1;
             
-            // Get each line of the DMI metadata
-            var data = GetDMIData(ImageMetadataReader.ReadMetadata(stream));
+            // Get the contents of the DMI metadata
+            var data = GetDMIData(PngMetadataReader.ReadMetadata(stream));
             ParseMetadata(data);
         }
 
