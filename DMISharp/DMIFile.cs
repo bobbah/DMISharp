@@ -89,6 +89,7 @@ namespace DMISharp
             }
 
             // Get dimensions in frames using the same logic that BYOND does internally (adapted from byondcore.dll)
+            // (more specifically from iconToPixels)
             var numFrames = frames.Count;
             var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
             var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
