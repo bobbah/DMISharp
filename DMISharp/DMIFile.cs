@@ -92,26 +92,27 @@ namespace DMISharp
             var numFrames = frames.Count;
             var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
             var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
-
-            var dvar10 = Math.Ceiling(yRatio);
-            var dvar11 = Math.Floor(xRatio);
-            if (dvar11 * dvar10 < numFrames)
+            
+            var intermediateX = Math.Floor(xRatio);
+            if (intermediateX * Math.Ceiling(yRatio) < numFrames)
                 xRatio = Math.Ceiling(xRatio);
-            dvar11 = Math.Ceiling(xRatio);
-            var dvar12 = Math.Floor(yRatio);
-            if (dvar12 * dvar11 < numFrames)
-                yRatio = dvar10;
-            dvar12 = Math.Floor(yRatio);
-            dvar10 = Math.Ceiling(yRatio);
+            
+            intermediateX = Math.Ceiling(xRatio);
+            var intermediateY = Math.Floor(yRatio);
+            if (intermediateY * intermediateX < numFrames)
+                yRatio = Math.Ceiling(yRatio);
+            
+            intermediateY = Math.Floor(yRatio);
+            var intermediateY2 = Math.Ceiling(yRatio);
             xRatio = Math.Floor(xRatio);
-            if (dvar12 * dvar11 <= xRatio * dvar10)
+            if (intermediateY * intermediateX <= xRatio * intermediateY2)
             {
-                dvar10 = dvar12;
-                xRatio = dvar11;
+                intermediateY2 = intermediateY;
+                xRatio = intermediateX;
             }
 
             var xFrames = (int) (xRatio + 0.5);
-            var yFrames = (int) (dvar10 + 0.5);
+            var yFrames = (int) (intermediateY2 + 0.5);
 
             using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
             for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
