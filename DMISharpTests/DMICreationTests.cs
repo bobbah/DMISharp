@@ -1,8 +1,8 @@
-﻿using DMISharp;
+﻿using System.Collections.Generic;
+using System.Linq;
+using DMISharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Collections.Generic;
-using System.Linq;
 using Xunit;
 
 namespace DMISharpTests

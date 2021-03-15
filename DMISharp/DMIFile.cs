@@ -1,13 +1,13 @@
-﻿using DMISharp.Interfaces;
-using DMISharp.Metadata;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using DMISharp.Interfaces;
+using DMISharp.Metadata;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace DMISharp
 {
@@ -16,10 +16,8 @@ namespace DMISharp
     /// </summary>
     public class DMIFile : IDisposable, IExportable
     {
-        public DMIMetadata Metadata { get; private set; }
-        private List<DMIState> _states;
         private bool _disposedValue;
-        public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
+        private List<DMIState> _states;
 
         public DMIFile(int frameWidth, int frameHeight)
         {
@@ -58,6 +56,16 @@ namespace DMISharp
 
         }
 
+        public DMIMetadata Metadata { get; }
+        public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
         /// <summary>
         /// Saves a DMI File to a stream. The resulting file is .dmi-ready
         /// </summary>
@@ -71,31 +79,53 @@ namespace DMISharp
             var frames = new List<Image<Rgba32>>();
             foreach (var state in States)
             {
-                for (int frame = 0; frame < state.Frames; frame++)
+                for (var frame = 0; frame < state.Frames; frame++)
                 {
-                    for (int dir = 0; dir < state.Dirs; dir++)
+                    for (var dir = 0; dir < state.Dirs; dir++)
                     {
                         frames.Add(state.GetFrame((StateDirection)dir, frame));
                     }
                 }
             }
-            var numFrames = frames.Count;
 
-            // Get dimensions in frames
-            var xFrames = Math.Max(1, (int)Math.Sqrt(numFrames));
-            var yFrames = Math.Max(1, (int)Math.Ceiling(numFrames * 1.0 / xFrames));
+            // Get dimensions in frames using the same logic that BYOND does internally (adapted from byondcore.dll)
+            // (more specifically from iconToPixels)
+            var numFrames = frames.Count;
+            var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
+            var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
+            
+            var intermediateX = Math.Floor(xRatio);
+            if (intermediateX * Math.Ceiling(yRatio) < numFrames)
+                xRatio = Math.Ceiling(xRatio);
+            
+            intermediateX = Math.Ceiling(xRatio);
+            var intermediateY = Math.Floor(yRatio);
+            if (intermediateY * intermediateX < numFrames)
+                yRatio = Math.Ceiling(yRatio);
+            
+            intermediateY = Math.Floor(yRatio);
+            var intermediateY2 = Math.Ceiling(yRatio);
+            xRatio = Math.Floor(xRatio);
+            if (intermediateY * intermediateX <= xRatio * intermediateY2)
+            {
+                intermediateY2 = intermediateY;
+                xRatio = intermediateX;
+            }
+
+            var xFrames = (int) (xRatio + 0.5);
+            var yFrames = (int) (intermediateY2 + 0.5);
 
             using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
             for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
             {
-                for (int x = 0; x < xFrames && i < numFrames; x++, i++)
+                for (var x = 0; x < xFrames && i < numFrames; x++, i++)
                 {
                     var targetFrame = frames[i];
-                    for (int ypx = 0; ypx < Metadata.FrameHeight; ypx++)
+                    for (var ypx = 0; ypx < Metadata.FrameHeight; ypx++)
                     {
                         var sourceSpan = targetFrame.GetPixelRowSpan(ypx);
                         var destSpan = img.GetPixelRowSpan(ypx + y * Metadata.FrameHeight);
-                        for (int xpx = 0; xpx < Metadata.FrameWidth; xpx++)
+                        for (var xpx = 0; xpx < Metadata.FrameWidth; xpx++)
                         {
                             destSpan[xpx + x * Metadata.FrameWidth] = sourceSpan[xpx];
                         }
@@ -103,21 +133,10 @@ namespace DMISharp
                 }
             }
 
-            PngMetadata md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
+            var md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
             md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
 
             img.SaveAsPng(stream);
-        }
-
-        /// <summary>
-        /// Saves a DMI File to a specific file path.
-        /// </summary>
-        /// <param name="path">The path to save the image to.</param>
-        /// <returns>True if the file was saved, false otherwise</returns>
-        public void Save(string path)
-        {
-            using var fs = File.OpenWrite(path);
-            Save(fs);
         }
 
         /// <summary>
@@ -135,13 +154,24 @@ namespace DMISharp
         }
 
         /// <summary>
+        /// Saves a DMI File to a specific file path.
+        /// </summary>
+        /// <param name="path">The path to save the image to.</param>
+        /// <returns>True if the file was saved, false otherwise</returns>
+        public void Save(string path)
+        {
+            using var fs = File.OpenWrite(path);
+            Save(fs);
+        }
+
+        /// <summary>
         /// Develops BYOND txt header for DMI files
         /// </summary>
         /// <returns>The BYOND txt header for this DMI file</returns>
         private string GetTextChunk()
         {
             var builder = new StringBuilder();
-            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version: 0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
 
             foreach (var state in States)
             {
@@ -153,7 +183,7 @@ namespace DMISharp
                 if (state.Data.Rewind) builder.Append("\trewind = 1\n");
             }
 
-            builder.Append("# END DMI");
+            builder.Append("# END DMI\n");
             return builder.ToString();
         }
 
@@ -174,12 +204,13 @@ namespace DMISharp
                 {
                     var totalFrames = Metadata.States.Sum(x => x.Frames * x.Dirs);
 
-                    for (int rows = 1; totalFrames >= rows; rows++)
+                    for (var rows = 1; totalFrames >= rows; rows++)
                     {
                         if (img.Width / (totalFrames / rows) == img.Height / rows)
                         {
                             Metadata.FrameHeight = img.Height / rows;
                             Metadata.FrameWidth = img.Width / (totalFrames / rows);
+                            break;
                         }
                     }
                 }
@@ -189,11 +220,11 @@ namespace DMISharp
                     return states;
                 }
 
-                int wFrames = img.Width / Metadata.FrameWidth;
-                int hFrames = img.Height / Metadata.FrameHeight;
-                int processedImages = 0;
-                int currWIndex = 0;
-                int currHIndex = 0;
+                var wFrames = img.Width / Metadata.FrameWidth;
+                var hFrames = img.Height / Metadata.FrameHeight;
+                var processedImages = 0;
+                var currWIndex = 0;
+                var currHIndex = 0;
 
                 foreach (var state in Metadata.States)
                 {
@@ -334,13 +365,6 @@ namespace DMISharp
                 _states = null;
                 _disposedValue = true;
             }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
     }
 }

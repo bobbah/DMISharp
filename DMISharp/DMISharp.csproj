@@ -9,25 +9,32 @@
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.6.1.0</AssemblyVersion>
-    <Version>1.6.1</Version>
+    <AssemblyVersion>1.6.2.0</AssemblyVersion>
+    <Version>1.6.2</Version>
     <PackageIcon>dmisharp.png</PackageIcon>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
     <PackageReleaseNotes>
-      - Added support for .NET Framework 4.7.2 and .NET Framework 4.6.1
-      - Updated ImageSharp to 1.0.3
+      - Added DMI shaping algorithm from BYOND
+      - Reworked DMI metadata parsing to use spans, decrease allocations where possible
+      - Added new unit tests to test that DMI metadata is produced correctly
+      - Added new unit tests to test that DMI file shapes and content are correct
     </PackageReleaseNotes>
-    <FileVersion>1.6.1.0</FileVersion>
+    <FileVersion>1.6.2.0</FileVersion>
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.4.3" />
+    <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="6.1.1" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta11" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) OR $(TargetFramework.StartsWith('netstandard'))">
+    <PackageReference Include="IndexRange" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

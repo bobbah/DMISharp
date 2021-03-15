@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
 
 namespace DMISharp.Metadata
 {
@@ -10,18 +7,10 @@ namespace DMISharp.Metadata
     /// </summary>
     public class StateMetadata
     {
-        public string State { get; set; }
-        public int Dirs { get; internal set; }
-        public int Frames { get; internal set; }
-#pragma warning disable CA1819 // Properties should not return arrays
-        public double[] Delay { get; internal set; }
-#pragma warning restore CA1819 // Properties should not return arrays
-        public bool Rewind { get; internal set; }
-        public bool Movement { get; internal set; }
-        public int Loop { get; internal set; }
-        public IEnumerable<double[]> Hotspots { get; set; }
-        private static readonly Regex statePattern = new Regex("^state = \"(?<label>.*)\"$", RegexOptions.Compiled);
-        private static readonly Regex stateSubKeysPattern = new Regex("^\t(?<key>.+) = (?<val>.+)$", RegexOptions.Compiled);
+        internal StateMetadata()
+        {
+            
+        }
 
         public StateMetadata(string name, DirectionDepth directionDepth, int frames)
         {
@@ -31,117 +20,43 @@ namespace DMISharp.Metadata
         }
 
         /// <summary>
-        /// Instantiates a StateMetadata object from a collection of body metadata
+        /// The name of the state
         /// </summary>
-        /// <param name="data">A collection of body metadata for the state</param>
-        public StateMetadata(List<string> data)
-        {
-            if (data is null)
-            {
-                throw new ArgumentNullException(nameof(data));
-            }
+        public string State { get; set; }
 
-            // Get state name
-            State = statePattern.Match(data[0]).Groups["label"].Value;
+        /// <summary>
+        /// The number of directions for the state. Generally 1, 4, or 8.
+        /// </summary>
+        public int Dirs { get; internal set; }
 
-            // Get key, value pairs
-            var rowKV = new List<(string key, string value)>();
-            foreach (var row in data.Skip(1))
-            {
-                var match = stateSubKeysPattern.Match(row);
-                rowKV.Add((match.Groups["key"].Value, match.Groups["val"].Value));
-            }
+        /// <summary>
+        /// The number of frames per direction
+        /// </summary>
+        public int Frames { get; internal set; }
 
-            // Consume the pairs we are interested in
-            if (rowKV.Any(x => x.key == "dirs"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "dirs").First();
-                try
-                {
-                    Dirs = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "frames"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "frames").First();
-                try
-                {
-                    Frames = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "delay"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "delay").First();
-                try
-                {
-                    Delay = value.Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "rewind"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "rewind").First();
-                try
-                {
-                    Rewind = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) == 1;
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "movement"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "movement").First();
-                try
-                {
-                    Movement = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) == 1;
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "loop"))
-            {
-                var (key, value) = rowKV.Where(x => x.key == "loop").First();
-                try
-                {
-                    Loop = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{key} = {value}]", e);
-                }
-            }
-            if (rowKV.Any(x => x.key == "hotspot"))
-            {
-                var cursor = rowKV.Where(x => x.key == "dirs");
-                try
-                {
-                    var processed = new List<double[]>();
+        /// <summary>
+        /// The delays used for animating each frame in each direction
+        /// </summary>
+        public double[] Delay { get; internal set; }
 
-                    foreach (var (key, value) in cursor)
-                    {
-                        processed.Add(value.Split(',').Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray());
-                    }
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException($"Failed to parse value from k,v pair [{string.Join(", ", cursor.Select(x => x.key))} = {string.Join(", ", cursor.Select(x => x.value))}]", e);
-                }
-            }
-        }
+        /// <summary>
+        /// Controls if the state has rewind, which will run the animation to end frame and then back
+        /// </summary>
+        public bool Rewind { get; internal set; }
+
+        /// <summary>
+        /// Controls if the animation is only used for when this state is used by a moving object
+        /// </summary>
+        public bool Movement { get; internal set; }
+
+        /// <summary>
+        /// Controls if the animation loops, or just plays once
+        /// </summary>
+        public int Loop { get; internal set; }
+
+        /// <summary>
+        /// Controls the hotspots, used for defining custom cursors
+        /// </summary>
+        public List<int[]> Hotspots { get; set; }
     }
 }

@@ -1,9 +1,8 @@
-﻿using MetadataExtractor;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
+using MetadataExtractor.Formats.Png;
 
 namespace DMISharp.Metadata
 {
@@ -12,10 +11,6 @@ namespace DMISharp.Metadata
     /// </summary>
     public class DMIMetadata
     {
-        public double Version { get; private set; } // BYOND version
-        public int FrameWidth { get; internal set; }
-        public int FrameHeight { get; internal set; }
-        public List<StateMetadata> States { get; }
         private static readonly Regex _DMIStart = new Regex(@"#\s{0,1}BEGIN DMI", RegexOptions.Compiled);
 
         public DMIMetadata(double byondVersion, int frameWidth, int frameHeight)
@@ -29,148 +24,166 @@ namespace DMISharp.Metadata
         /// <summary>
         /// Instantiates a DMIMetadata object from a file stream of that DMI file
         /// </summary>
-        /// <param name="stream"></param>
+        /// <param name="stream">The data stream to read from</param>
         public DMIMetadata(Stream stream)
         {
-            // Get each line of the DMI metadata
-            var data = GetDMIData(ImageMetadataReader.ReadMetadata(stream));
-
-            // Get header data
-            var headerData = data.Take(data.TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).Count());
-            var bodyData = data.Skip(headerData.Count());
-
-            // Get version
-            Version = GetFileVersion(headerData.ToList());
-
-            // Get possible frame dimensions, if available
-            GetFrameDimensions(headerData.ToList());
-
-            // Get state metadata from body
-            States = GetStateMetadata(bodyData.ToList());
+            States = new List<StateMetadata>();
+            FrameWidth = -1;
+            FrameHeight = -1;
+            
+            // Get the contents of the DMI metadata
+            var data = GetDMIMetadata(stream);
+            ParseMetadata(data);
         }
+
+        /// <summary>
+        /// The version of the DMI metadata, dictated by BYOND
+        /// </summary>
+        public double Version { get; private set; }
+
+        /// <summary>
+        /// The width of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
+        public int FrameWidth { get; internal set; }
+
+        /// <summary>
+        /// The height of each frame in the DMI file, can be -1 indicating the frames are square.
+        /// </summary>
+        public int FrameHeight { get; internal set; }
+
+        public List<StateMetadata> States { get; }
 
         /// <summary>
         /// Gets a collection of DMI metadata directories and breaks it into individual lines of DMI metadata
         /// </summary>
-        /// <param name="directories">The metadata directories to search</param>
-        /// <returns>An array of strings representing the lines of the DMI data</returns>
-        private static string[] GetDMIData(IEnumerable<MetadataExtractor.Directory> directories)
+        /// <param name="stream">The file to get the metadata of</param>
+        /// <returns>A ReadOnlySpan of the DMI's metadata if found</returns>
+        public static ReadOnlySpan<char> GetDMIMetadata(Stream stream)
         {
-            var metaDesc = directories
-                .SelectMany(x => x.Tags)
-                .Select(x => x.Description)
-                .FirstOrDefault(x => _DMIStart.IsMatch(x));
-            
+            var directories = PngMetadataReader.ReadMetadata(stream);
+            string metaDesc = null;
+            foreach (var t in directories)
+            {
+                foreach (var tag in t.Tags)
+                {
+                    if (tag.Description != null && !_DMIStart.IsMatch(tag.Description)) 
+                        continue;
+                    
+                    metaDesc = tag.Description;
+                    break;
+                }
+
+                if (metaDesc != null)
+                    break;
+            }
+
             if (metaDesc == null)
             {
                 throw new Exception("Failed to find BYOND DMI metadata in PNG text data!");
             }
-
-
-#if NETSTANDARD || NET472 || NET461
-            metaDesc = metaDesc.Substring(metaDesc.IndexOf('#'));
-#else
-            metaDesc = metaDesc[metaDesc.IndexOf('#')..];
-#endif
-            return metaDesc.Split(new char[] { '\n', '\r' });
+            
+            return metaDesc.AsSpan()[metaDesc.IndexOf('#')..];
         }
 
         /// <summary>
-        /// Attempts to find the BYOND DMI file version from header metadata.
+        /// Attempts to apply all data from the provided metadata to this DMIMetadata object
         /// </summary>
-        /// <param name="headerData">The header metadata from a DMI file.</param>
-        /// <returns>The version of DMI file if found, otherwise 0.</returns>
-        private static double GetFileVersion(List<string> headerData)
+        /// <param name="data">The metadata string to parse</param>
+        private void ParseMetadata(ReadOnlySpan<char> data)
         {
-            var possibleLines = headerData.Where(x => x.StartsWith("version", StringComparison.InvariantCulture));
+            StateMetadata currentState = null;
+            var tokenizer = new DMITokenizer(data);
+            
+            // Parse header
+            var hasBody = ParseHeader(ref tokenizer);
+            if (Version == 0d)
+                throw new Exception("Failed to parse required header data of DMI file, this file may be corrupt.");
 
-            switch (possibleLines.Count())
+            // Check for any additional data after the header
+            if (!hasBody)
+                return;
+            
+            do
             {
-                case 0:
-                    return 0.0;
-                case 1:
-                    try
+                // Handle any new states
+                if (tokenizer.KeyEquals("state"))
+                {
+                    if (currentState != null)
+                        States.Add(currentState);
+
+                    currentState = new StateMetadata()
                     {
-                        return double.Parse(possibleLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
-                    }
-                    catch (FormatException e)
-                    {
-                        throw new FormatException($"Failed to parse version number from line:\n{possibleLines.First()}", e);
-                    }
-                default:
-                    throw new ArgumentException("Found more than one version number line, possibly corrupt file");
-            }
+                        State = tokenizer.CurrentValue.ToString()
+                    };
+
+                    continue;
+                }
+                
+                // At this point if no state is present, then we have invalid data
+                if (currentState == null)
+                    throw new Exception("Started to read state data without a state, this file may be corrupt");
+                
+                // Handle value
+                if (tokenizer.KeyEquals("dirs"))
+                    currentState.Dirs = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("frames"))
+                    currentState.Frames = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("rewind"))
+                    currentState.Rewind = tokenizer.ValueAsBool();
+                else if (tokenizer.KeyEquals("movement"))
+                    currentState.Movement = tokenizer.ValueAsBool();
+                else if (tokenizer.KeyEquals("loop"))
+                    currentState.Loop = tokenizer.ValueAsInt();
+                else if (tokenizer.KeyEquals("delay"))
+                    currentState.Delay = tokenizer.ValueAsDoubleArray();
+                else if (tokenizer.KeyEquals("hotspot"))
+                {
+                    currentState.Hotspots ??= new List<int[]>();
+                    currentState.Hotspots.Add(tokenizer.ValueAsIntArray());
+                }
+            } while (tokenizer.MoveNext());
+            
+            // Catch the last state
+            States.Add(currentState);
         }
 
         /// <summary>
-        /// Attempts to get the frame dimensions of a DMI file from the header metadata.
+        /// Attempts to parse the header data (version, frame size) to this DMIMetadata object
         /// </summary>
-        /// <param name="headerData">The header metadata from a DMI file.</param>
-        /// <returns>True if successful, false if failed</returns>
-        private bool GetFrameDimensions(List<string> headerData)
+        /// <param name="tokenizer">The tokenizer containing the data</param>
+        /// <returns>True if more data (states) follows, false if no data is found after the header</returns>
+        private bool ParseHeader(ref DMITokenizer tokenizer)
         {
-            // Get width
-            var widthLines = headerData.Where(x => x.StartsWith("\twidth", StringComparison.InvariantCulture));
-            if (widthLines.Any())
+            while (tokenizer.MoveNext())
             {
-                try
+                if (tokenizer.KeyEquals("version"))
                 {
-                    FrameWidth = int.Parse(widthLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
+                    if (Version != 0d)
+                        throw new Exception("Found more than one version line, this file may be corrupt!");
+
+                    Version = tokenizer.ValueAsDouble();
                 }
-                catch (FormatException e)
+                else if (tokenizer.KeyEquals("width"))
                 {
-                    throw new FormatException($"Failed to parse width value from line\n{widthLines.First()}", e);
+                    if (FrameWidth != -1)
+                        throw new Exception("Found more than one frame width line, this file may be corrupt!");
+
+                    FrameWidth = tokenizer.ValueAsInt();
                 }
-            }
-            else
-            {
-                FrameWidth = -1;
-            }
-
-            var heightLines = headerData.Where(x => x.StartsWith("\theight", StringComparison.InvariantCulture));
-            if (heightLines.Any())
-            {
-                try
+                else if (tokenizer.KeyEquals("height"))
                 {
-                    FrameHeight = int.Parse(heightLines.First().Split(new char[] { '=', ' ' }).Last(), System.Globalization.CultureInfo.InvariantCulture);
+                    if (FrameHeight != -1)
+                        throw new Exception("Found more than one frame height line, this file may be corrupt!");
+
+                    FrameHeight = tokenizer.ValueAsInt();
                 }
-                catch (FormatException e)
+                else
                 {
-                    throw new FormatException($"Failed to parse width value from line\n{heightLines.First()}", e);
-                }
-            }
-            else
-            {
-                FrameHeight = -1;
-            }
-
-            return FrameWidth != -1 && FrameHeight != -1;
-        }
-
-        /// <summary>
-        /// Creates a collection of state metadata from the body of a BYOND DMI metadata set.
-        /// </summary>
-        /// <param name="bodyData">The body metadata of the DMI file.</param>
-        /// <returns>A collection of StateMetadata objects representing each state in the file.</returns>
-        private static List<StateMetadata> GetStateMetadata(List<string> bodyData)
-        {
-            var toReturn = new List<StateMetadata>();
-            var bodyLength = bodyData.Count;
-
-            for (int line = 0; line < bodyLength; line++)
-            {
-                // Iterate through each state
-                if (bodyData[line].StartsWith("state", StringComparison.InvariantCulture))
-                {
-                    var test = bodyData.Skip(line).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)).ToList();
-
-                    var toParse = new List<string>() { bodyData[line] };
-                    toParse.AddRange(bodyData.Skip(line + 1).TakeWhile(x => !x.StartsWith("state", StringComparison.InvariantCulture)));
-                    toReturn.Add(new StateMetadata(toParse));
+                    return true;
                 }
             }
 
-            return toReturn;
+            return false;
         }
     }
 }

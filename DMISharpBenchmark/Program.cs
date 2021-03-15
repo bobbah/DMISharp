@@ -4,9 +4,11 @@ namespace DMISharpBenchmark
 {
     class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {
-            _ = BenchmarkRunner.Run<DMIBenchmarks>();
+            _ = BenchmarkSwitcher
+                .FromAssembly(typeof(Program).Assembly)
+                .Run(args);
         }
     }
 }
