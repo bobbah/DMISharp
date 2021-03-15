@@ -90,7 +90,28 @@ namespace DMISharp
             var numFrames = frames.Count;
 
             // Get dimensions in frames
-            var xFrames = Math.Max(1, (int)Math.Sqrt(numFrames));
+            var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
+            var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
+            
+            var dvar10 = Math.Ceiling(yRatio);
+            var dvar11 = Math.Floor(xRatio);
+            if (dvar11 * dvar10 < numFrames)
+            {
+                xRatio = Math.Ceiling(xRatio);
+            }
+
+            dvar11 = Math.Ceiling(xRatio);
+            if (Math.Floor(yRatio) * dvar11 < numFrames)
+            {
+                yRatio = dvar10;
+            }
+            
+            if (Math.Floor(yRatio) * dvar11 <= Math.Floor(xRatio) * Math.Ceiling(yRatio))
+            {
+                xRatio = dvar11;
+            }
+
+            var xFrames = (int)xRatio;
             var yFrames = Math.Max(1, (int)Math.Ceiling(numFrames * 1.0 / xFrames));
 
             using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
@@ -149,7 +170,7 @@ namespace DMISharp
         private string GetTextChunk()
         {
             var builder = new StringBuilder();
-            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version: 0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
 
             foreach (var state in States)
             {
@@ -161,7 +182,7 @@ namespace DMISharp
                 if (state.Data.Rewind) builder.Append("\trewind = 1\n");
             }
 
-            builder.Append("# END DMI");
+            builder.Append("# END DMI\n");
             return builder.ToString();
         }
 

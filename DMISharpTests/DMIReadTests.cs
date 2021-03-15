@@ -10,7 +10,7 @@ namespace DMISharpTests
         public void AnimalDMIStateCount()
         {
             using var file = new DMIFile(@"Data/Input/animal.dmi");
-            Assert.Equal(149, file.States.Count);
+            Assert.Equal(154, file.States.Count);
         }
 
         [Fact]
@@ -55,7 +55,7 @@ namespace DMISharpTests
 
             // Arrange
             var bat = file.States.First(x => x.Name == "bat");
-            var carp = file.States.First(x => x.Name == "carp");
+            var carp = file.States.First(x => x.Name == "parrot_fly");
             var rareFrogDead = file.States.First(x => x.Name == "rare_frog_dead");
 
             // Assert

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using MetadataExtractor.Formats.Png;
-using Directory = MetadataExtractor.Directory;
 
 namespace DMISharp.Metadata
 {
@@ -33,7 +32,7 @@ namespace DMISharp.Metadata
             FrameHeight = -1;
             
             // Get the contents of the DMI metadata
-            var data = GetDMIData(PngMetadataReader.ReadMetadata(stream));
+            var data = GetDMIMetadata(stream);
             ParseMetadata(data);
         }
 
@@ -57,10 +56,11 @@ namespace DMISharp.Metadata
         /// <summary>
         /// Gets a collection of DMI metadata directories and breaks it into individual lines of DMI metadata
         /// </summary>
-        /// <param name="directories">The metadata directories to search</param>
+        /// <param name="stream">The file to get the metadata of</param>
         /// <returns>A ReadOnlySpan of the DMI's metadata if found</returns>
-        private static ReadOnlySpan<char> GetDMIData(IEnumerable<Directory> directories)
+        public static ReadOnlySpan<char> GetDMIMetadata(Stream stream)
         {
+            var directories = PngMetadataReader.ReadMetadata(stream);
             string metaDesc = null;
             foreach (var t in directories)
             {
