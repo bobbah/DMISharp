@@ -87,32 +87,21 @@ namespace DMISharp
                     }
                 }
             }
-            var numFrames = frames.Count;
 
-            // Get dimensions in frames
+            // Get dimensions in frames using the same logic that BYOND does internally (adapted from byondcore.dll)
+            var numFrames = frames.Count;
             var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
             var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
-            
-            var dvar10 = Math.Ceiling(yRatio);
-            var dvar11 = Math.Floor(xRatio);
-            if (dvar11 * dvar10 < numFrames)
-            {
-                xRatio = Math.Ceiling(xRatio);
-            }
 
-            dvar11 = Math.Ceiling(xRatio);
-            if (Math.Floor(yRatio) * dvar11 < numFrames)
-            {
-                yRatio = dvar10;
-            }
-            
-            if (Math.Floor(yRatio) * dvar11 <= Math.Floor(xRatio) * Math.Ceiling(yRatio))
-            {
-                xRatio = dvar11;
-            }
+            if (Math.Floor(xRatio) * Math.Ceiling(yRatio) < numFrames)
+                xRatio = Math.Ceiling(xRatio);
+            if (Math.Floor(yRatio) * Math.Ceiling(xRatio) < numFrames)
+                yRatio = Math.Ceiling(yRatio);
+            if (Math.Floor(yRatio) * Math.Ceiling(xRatio) <= Math.Floor(xRatio) * Math.Ceiling(yRatio))
+                xRatio = Math.Ceiling(xRatio);
 
             var xFrames = (int)xRatio;
-            var yFrames = Math.Max(1, (int)Math.Ceiling(numFrames * 1.0 / xFrames));
+            var yFrames = Math.Max(1, (int)Math.Ceiling((double)numFrames / xFrames));
 
             using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
             for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
