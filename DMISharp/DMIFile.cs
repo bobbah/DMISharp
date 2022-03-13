@@ -5,9 +5,11 @@ using System.Linq;
 using System.Text;
 using DMISharp.Interfaces;
 using DMISharp.Metadata;
+using DMISharp.Quantization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing.Processors.Quantization;
 
 namespace DMISharp
 {
@@ -53,7 +55,6 @@ namespace DMISharp
         public DMIFile(string file)
             : this(File.OpenRead(file))
         {
-
         }
 
         public DMIMetadata Metadata { get; }
@@ -93,16 +94,16 @@ namespace DMISharp
             var numFrames = frames.Count;
             var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
             var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
-            
+
             var intermediateX = Math.Floor(xRatio);
             if (intermediateX * Math.Ceiling(yRatio) < numFrames)
                 xRatio = Math.Ceiling(xRatio);
-            
+
             intermediateX = Math.Ceiling(xRatio);
             var intermediateY = Math.Floor(yRatio);
             if (intermediateY * intermediateX < numFrames)
                 yRatio = Math.Ceiling(yRatio);
-            
+
             intermediateY = Math.Floor(yRatio);
             var intermediateY2 = Math.Ceiling(yRatio);
             xRatio = Math.Floor(xRatio);
@@ -112,8 +113,8 @@ namespace DMISharp
                 xRatio = intermediateX;
             }
 
-            var xFrames = (int) (xRatio + 0.5);
-            var yFrames = (int) (intermediateY2 + 0.5);
+            var xFrames = (int)(xRatio + 0.5);
+            var yFrames = (int)(intermediateY2 + 0.5);
 
             using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
             for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
@@ -121,22 +122,115 @@ namespace DMISharp
                 for (var x = 0; x < xFrames && i < numFrames; x++, i++)
                 {
                     var targetFrame = frames[i];
-                    for (var ypx = 0; ypx < Metadata.FrameHeight; ypx++)
+                    img.ProcessPixelRows(targetFrame, (imgAccessor, targetAccessor) =>
                     {
-                        var sourceSpan = targetFrame.GetPixelRowSpan(ypx);
-                        var destSpan = img.GetPixelRowSpan(ypx + y * Metadata.FrameHeight);
-                        for (var xpx = 0; xpx < Metadata.FrameWidth; xpx++)
+                        for (var ypx = 0; ypx < Metadata.FrameHeight; ypx++)
                         {
-                            destSpan[xpx + x * Metadata.FrameWidth] = sourceSpan[xpx];
+                            var sourceSpan = targetAccessor.GetRowSpan(ypx);
+                            var destSpan = imgAccessor.GetRowSpan(ypx + y * Metadata.FrameHeight);
+                            for (var xpx = 0; xpx < Metadata.FrameWidth; xpx++)
+                            {
+                                destSpan[xpx + x * Metadata.FrameWidth] = sourceSpan[xpx];
+                            }
                         }
-                    }
+                    });
                 }
             }
 
             var md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
             md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
 
-            img.SaveAsPng(stream);
+            // Perform some brief analysis to determine optimal color type for saving
+            var hasTransparency = false;
+            var pristineGreyscale = true;
+            var colors = new HashSet<uint>();
+            var transparent = Color.Transparent;
+            img.ProcessPixelRows(accessor =>
+            {
+                for (var ypx = 0; ypx < img.Height; ypx++)
+                {
+                    for (var xpx = 0; xpx < img.Width; xpx++)
+                    {
+                        var row = accessor.GetRowSpan(ypx);
+
+                        // Check for transparency, if we ultimately don't have any we can remove the alpha layer
+                        if (!hasTransparency && row[xpx].A < byte.MaxValue)
+                            hasTransparency = true;
+
+                        // Set color to be transparent black if fully transparent
+                        if (row[xpx].A == 0)
+                            row[xpx].FromRgba32(transparent);
+
+                        // Check for greyscale pristine-ness
+                        if (pristineGreyscale && !(row[xpx].R == row[xpx].G && row[xpx].G == row[xpx].B))
+                            pristineGreyscale = false;
+
+                        // Count distinct colors to determine best approach with palette
+                        colors.Add(row[xpx].PackedValue);
+                    }
+                }
+            });
+
+            var pngEncoder = new PngEncoder()
+            {
+                InterlaceMethod = PngInterlaceMode.None,
+                CompressionLevel = PngCompressionLevel.BestCompression,
+                FilterMethod = PngFilterMethod.Adaptive,
+                TransparentColorMode = PngTransparentColorMode.Clear,
+                TextCompressionThreshold = 0, // always compress text chunks
+                ChunkFilter = PngChunkFilter.ExcludePhysicalChunk | PngChunkFilter.ExcludeExifChunk |
+                              PngChunkFilter.ExcludeGammaChunk
+            };
+
+            // No transparency needed if there is no transparency used
+            if (!hasTransparency)
+                pngEncoder.ColorType = PngColorType.Rgb;
+
+            // If the image is fully greyscale then save as grayscale for space savings
+            if (pristineGreyscale)
+                pngEncoder.ColorType = hasTransparency ? PngColorType.GrayscaleWithAlpha : PngColorType.Grayscale;
+
+            // If there is no possibility of a color palette we can return at this point
+            if (colors.Count > 256)
+            {
+                img.SaveAsPng(stream, pngEncoder);
+                return;
+            }
+            
+            // We can use a color palette
+            var paletteEncoder = new PngEncoder()
+            {
+                InterlaceMethod = pngEncoder.InterlaceMethod,
+                CompressionLevel = pngEncoder.CompressionLevel,
+                FilterMethod = pngEncoder.FilterMethod,
+                TransparentColorMode = pngEncoder.TransparentColorMode,
+                TextCompressionThreshold = pngEncoder.TextCompressionThreshold,
+                ChunkFilter = pngEncoder.ChunkFilter,
+                ColorType = PngColorType.Palette,
+                Quantizer = new NoFrillsQuantizer(colors.Select(x => new Color(new Rgba32(x))).ToArray(),
+                    new QuantizerOptions() { Dither = null })
+            };
+
+            // Determine bit depth based on how many colors we have to have in the palette, try to minimize
+            if (colors.Count <= 2)
+                paletteEncoder.BitDepth = PngBitDepth.Bit1;
+            else if (colors.Count <= 4)
+                paletteEncoder.BitDepth = PngBitDepth.Bit2;
+            else if (colors.Count <= 16)
+                paletteEncoder.BitDepth = PngBitDepth.Bit4;
+            else
+                paletteEncoder.BitDepth = PngBitDepth.Bit8;
+
+            // Test to see if the default saving or palette is smaller, then use the smallest of the two
+            using var paletteMs = new MemoryStream();
+            using var normalMs = new MemoryStream();
+
+            img.SaveAsPng(paletteMs, paletteEncoder);
+            img.SaveAsPng(normalMs, pngEncoder);
+
+            var smallest = paletteMs.Length < normalMs.Length ? paletteMs : normalMs;
+            smallest.Seek(0, SeekOrigin.Begin);
+            smallest.CopyTo(stream);
         }
 
         /// <summary>
@@ -150,6 +244,7 @@ namespace DMISharp
             {
                 result = result && state.IsReadyForSave();
             }
+
             return result;
         }
 
@@ -171,14 +266,16 @@ namespace DMISharp
         private string GetTextChunk()
         {
             var builder = new StringBuilder();
-            builder.Append($"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+            builder.Append(
+                $"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
 
             foreach (var state in States)
             {
                 builder.Append($"state = \"{state.Name}\"\n\tdirs = {state.Dirs}\n\tframes = {state.Frames}\n");
                 if (state.Data.Delay != null) builder.Append($"\tdelay = {string.Join(",", state.Data.Delay)}\n");
                 if (state.Data.Loop > 0) builder.Append($"\tloop = {state.Data.Loop}\n");
-                if (state.Data.Hotspots != null) builder.Append($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n");
+                if (state.Data.Hotspots != null)
+                    builder.Append($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n");
                 if (state.Data.Movement) builder.Append("\tmovement = 1\n");
                 if (state.Data.Rewind) builder.Append("\trewind = 1\n");
             }
@@ -228,7 +325,8 @@ namespace DMISharp
 
                 foreach (var state in Metadata.States)
                 {
-                    var toAdd = new DMIState(state, img, currWIndex, wFrames, currHIndex, hFrames, Metadata.FrameWidth, Metadata.FrameHeight);
+                    var toAdd = new DMIState(state, img, currWIndex, wFrames, currHIndex, hFrames, Metadata.FrameWidth,
+                        Metadata.FrameHeight);
                     processedImages += toAdd.TotalFrames;
                     currHIndex = processedImages / wFrames;
                     currWIndex = processedImages % wFrames;
@@ -343,8 +441,8 @@ namespace DMISharp
         private bool StateValidForFile(DMIState toCheck)
         {
             return toCheck != null
-                && toCheck.Height == Metadata.FrameHeight
-                && toCheck.Width == Metadata.FrameWidth;
+                   && toCheck.Height == Metadata.FrameHeight
+                   && toCheck.Width == Metadata.FrameWidth;
         }
 
         /// <summary>

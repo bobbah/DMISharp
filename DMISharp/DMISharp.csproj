@@ -1,40 +1,38 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0;netstandard2.0;net461;net472</TargetFrameworks>
+    <TargetFrameworks>net6.0;netstandard2.0;net461;net472</TargetFrameworks>
     <Authors>Bobbahbrown</Authors>
     <Company>MelonMesa</Company>
     <Description>Library for handling BYOND DMI files.</Description>
-    <Copyright>Copyright (c) 2021 MelonMesa</Copyright>
+    <Copyright>Copyright (c) 2022 MelonMesa</Copyright>
     <PackageProjectUrl>https://melonmesa.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/bobbahbrown/DMISharp</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
-    <AssemblyVersion>1.6.2.0</AssemblyVersion>
-    <Version>1.6.2</Version>
+    <AssemblyVersion>1.7.0.0</AssemblyVersion>
+    <Version>1.7.0</Version>
     <PackageIcon>dmisharp.png</PackageIcon>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageTags>DMI BYOND SpaceStation13</PackageTags>
     <PackageReleaseNotes>
-      - Added DMI shaping algorithm from BYOND
-      - Reworked DMI metadata parsing to use spans, decrease allocations where possible
-      - Added new unit tests to test that DMI metadata is produced correctly
-      - Added new unit tests to test that DMI file shapes and content are correct
+      - Added compression optimizations and some other size-decreasing optimizations to DMI file saving
+      - Updated to .NET 6
+      - Updated ImageSharp to 2.0
     </PackageReleaseNotes>
-    <FileVersion>1.6.2.0</FileVersion>
+    <FileVersion>1.7.0.0</FileVersion>
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MetadataExtractor" Version="2.4.3" />
-    <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="6.1.1" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta11" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) OR $(TargetFramework.StartsWith('netstandard'))">
-    <PackageReference Include="IndexRange" Version="1.0.0" />
+    <PackageReference Include="IndexRange" Version="1.0.1" />
+    <PackageReference Include="MetadataExtractor" Version="2.7.1" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>

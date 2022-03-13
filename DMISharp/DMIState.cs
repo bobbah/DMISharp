@@ -163,16 +163,20 @@ namespace DMISharp
                     var frame = new Image<Rgba32>(width, height);
                     var xOffset = currWIndex * width;
                     var yOffset = currHIndex * height;
-                    for (var ypx = 0; ypx < height; ypx++)
+                    
+                    source.ProcessPixelRows(frame, (sourceAccessor, frameAccessor) =>
                     {
-                        var sourceSpan = source.GetPixelRowSpan(ypx + yOffset);
-                        var frameSpan = frame.GetPixelRowSpan(ypx);
-                        for (var xpx = 0; xpx < width; xpx++)
+                        for (var ypx = 0; ypx < height; ypx++)
                         {
-                            frameSpan[xpx] = sourceSpan[xpx + xOffset];
+                            var sourceSpan = sourceAccessor.GetRowSpan(ypx + yOffset);
+                            var frameSpan = frameAccessor.GetRowSpan(ypx);
+                            for (var xpx = 0; xpx < width; xpx++)
+                            {
+                                frameSpan[xpx] = sourceSpan[xpx + xOffset];
+                            }
                         }
-                    }
-
+                    });
+                    
                     images[currDir][currFrame] = frame;
                     currDir++;
                 }

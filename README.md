@@ -4,7 +4,7 @@
 DMISharp
 </h1>
 
-### **DMISharp** is a .NET 5.0 library for easily interacting with the BYOND DMI file format.
+### **DMISharp** is a .NET 6.0 library for easily interacting with the BYOND DMI file format.
 
 Developed with ease-of-use in mind, this library provides a simple means for importing, modifying, and exporting DMI files. Internally, images are handled using [ImageSharp](https://github.com/SixLabors/ImageSharp), a fantastic open-source library from SixLabors.
 
