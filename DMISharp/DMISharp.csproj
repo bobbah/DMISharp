@@ -25,7 +25,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="IndexRange" Version="1.0.1" />
     <PackageReference Include="MetadataExtractor" Version="2.7.1" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2">
       <PrivateAssets>all</PrivateAssets>
@@ -35,6 +34,10 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="2.0.0" />
   </ItemGroup>
 
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) OR $(TargetFramework.StartsWith('netstandard'))">
+    <PackageReference Include="IndexRange" Version="1.0.1" />
+  </ItemGroup>
+  
   <ItemGroup>
     <None Include="NugetIcon\dmisharp.png" Pack="true" PackagePath="" />
   </ItemGroup>
