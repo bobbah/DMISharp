@@ -8,7 +8,7 @@ using SixLabors.ImageSharp.Processing.Processors.Quantization;
 
 namespace DMISharp.Quantization;
 
-public class NoFrillsQuantizer : IQuantizer
+internal class NoFrillsQuantizer : IQuantizer
 {
     private readonly ReadOnlyMemory<Color> _colorPalette;
 
@@ -35,7 +35,7 @@ public class NoFrillsQuantizer : IQuantizer
     }
 }
 
-internal struct NoFrillsQuantizer<TPixel> : IQuantizer<TPixel>
+internal readonly struct NoFrillsQuantizer<TPixel> : IQuantizer<TPixel>
     where TPixel : unmanaged, IPixel<TPixel>
 {
     private readonly Dictionary<TPixel, ushort> _paletteLookup;

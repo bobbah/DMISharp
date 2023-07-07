@@ -3,8 +3,7 @@ using Xunit;
 
 namespace DMISharp.Tests;
 
-// ReSharper disable once ClassNeverInstantiated.Global
-public class DMIModifyTests
+public static class DMIModifyTests
 {
     [Fact]
     public static void ShouldRemoveStateMetadata()
@@ -37,7 +36,7 @@ public class DMIModifyTests
     }
 
     [Fact]
-    public static void ShouldDetectInvalidDMIState__MissingFrame()
+    public static void ShouldDetectInvalidDMIStateMissingFrame()
     {
         // Arrange
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
@@ -52,7 +51,7 @@ public class DMIModifyTests
     }
 
     [Fact]
-    public static void ShouldDetectInvalidDMIState__MissingDirection()
+    public static void ShouldDetectInvalidDMIStateMissingDirection()
     {
         // Arrange
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
