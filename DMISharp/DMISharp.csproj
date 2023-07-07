@@ -24,30 +24,6 @@
 
     <Target Name="SetPRVersion" AfterTargets="MinVer" Condition="'$(GITHUB_ACTIONS)'=='true' And '$(GITHUB_EVENT_NAME)'=='pull_request'">
         <PropertyGroup>
-            <PRNumber></PRNumber>
-        </PropertyGroup>
-
-        <UsingTask TaskName="ExtractPRNumber" TaskFactory="CodeTaskFactory"
-            AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-            <ParameterGroup>
-                <gitHubRef ParameterType="System.String" Required="true" />
-                <prNumber Output="true" ParameterType="System.Int32" />
-            </ParameterGroup>
-            <Task>
-                <Code Type="Fragment" Language="cs">
-                <![CDATA[
-                    var match = System.Text.RegularExpressions.Regex.Match(gitHubRef, @"refs/pull/(?<prNumber>\d+)/merge");
-                    prNumber = match.Success ? int.Parse(match.Groups["prNumber"].Value) : 0;
-                ]]>
-            </Code>
-            </Task>
-        </UsingTask>
-
-        <ExtractPRNumber gitHubRef="$(GITHUB_REF)">
-            <Output PropertyName="PRNumber" TaskParameter="prNumber"></Output>
-        </ExtractPRNumber>
-
-        <PropertyGroup>
             <PackageVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)-pr.$(PRNumber).$(MinVerPreRelease)</PackageVersion>
             <PackageVersion Condition="'$(MinVerBuildMetadata)' != ''">$(PackageVersion)+$(MinVerBuildMetadata)</PackageVersion>
             <Version>$(PackageVersion)</Version>
