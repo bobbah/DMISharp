@@ -19,6 +19,14 @@ jobs:
     name: ${{ matrix.job.name }}
     runs-on: ${{ matrix.job.os }}
     steps:
+      - name: Set PR number (Linux)
+        run: |
+          echo "PRNumber=${{ github.event.pull_request.number }}" >> "$GITHUB_ENV"
+        if: matrix.job.name == 'ubuntu'
+      - name: Set PR number (Windows)
+        run: |
+          echo ("PRNumber=${{ github.event.pull_request.number }}") >> $env:GITHUB_ENV
+        if: matrix.job.name == 'windows'
       - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |

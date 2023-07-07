@@ -15,13 +15,26 @@
         <PackageIcon>dmisharp.png</PackageIcon>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageTags>DMI BYOND SpaceStation13 Space Station 13 tgstation tg</PackageTags>
-        <PackageReleaseNotes>https://github.com/bobbahbrown/DMISharp/blob/master/CHANGELOG.md</PackageReleaseNotes>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <PropertyGroup>
         <MinVerMinimumMajorMinor>2.0</MinVerMinimumMajorMinor>
     </PropertyGroup>
+
+    <Target Name="SetPRVersion" AfterTargets="MinVer" Condition="'$(GITHUB_ACTIONS)'=='true' And '$(GITHUB_EVENT_NAME)'=='pull_request'">
+        <PropertyGroup>
+            <PackageVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)-pr.$(PRNumber).$(MinVerPreRelease)</PackageVersion>
+            <PackageVersion Condition="'$(MinVerBuildMetadata)' != ''">$(PackageVersion)+$(MinVerBuildMetadata)</PackageVersion>
+            <Version>$(PackageVersion)</Version>
+        </PropertyGroup>
+    </Target>
+
+    <Target Name="SetReleaseNotes" AfterTargets="MinVer;SetPRVersion">
+        <PropertyGroup>
+            <PackageReleaseNotes>See notes for this release on GitHub: https://github.com/bobbahbrown/DMISharp/releases/tag/$(PackageVersion)</PackageReleaseNotes>
+        </PropertyGroup>
+    </Target>
 
     <ItemGroup>
         <PackageReference Include="MetadataExtractor" Version="2.8.0" />
@@ -30,13 +43,13 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
         <PackageReference Include="MinVer" Version="4.3.0">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
