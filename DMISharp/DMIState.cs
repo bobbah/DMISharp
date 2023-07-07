@@ -12,41 +12,82 @@ using SixLabors.ImageSharp.Processing.Processors.Quantization;
 namespace DMISharp;
 
 /// <summary>
-/// Representative of the BYOND state directions
+/// Representative of the BYOND state directions.
 /// </summary>
 public enum StateDirection
 {
+    /// <summary>
+    /// Southern (typically downward) direction
+    /// </summary>
     South,
+
+    /// <summary>
+    /// Northern (typically upwards) direction
+    /// </summary>
     North,
+
+    /// <summary>
+    /// Eastern (typically right) direction
+    /// </summary>
     East,
+
+    /// <summary>
+    /// Western (typically left) direction
+    /// </summary>
     West,
+
+    /// <summary>
+    /// Southeastern (typically down-right) direction
+    /// </summary>
     SouthEast,
+
+    /// <summary>
+    /// Southwestern (typically down-left) direction
+    /// </summary>
     SouthWest,
+
+    /// <summary>
+    /// Northeastern (typically up-right) direction
+    /// </summary>
     NorthEast,
+
+    /// <summary>
+    /// Northwestern (typically up-left) direction
+    /// </summary>
     NorthWest
 }
 
 /// <summary>
 /// Representative of the depth of directions available to a state.
-/// One = S
-/// Four = S, N, E, W
-/// Eight = S, N, E, W, SE, SW, NE, NW
 /// </summary>
+#pragma warning disable CA1008, CA1027
 public enum DirectionDepth
+#pragma warning restore CA1008, CA1027
 {
+    /// <summary>
+    /// One direction depth: S
+    /// </summary>
     One = 1,
+
+    /// <summary>
+    /// Four direction depth: S, N, E, W
+    /// </summary>
     Four = 4,
+
+    /// <summary>
+    /// Eight direction depth: S, N, E, W, SE, SW, NE, NW
+    /// </summary>
     Eight = 8
 }
 
 /// <summary>
-/// Represents an icon state in a BYOND DMI file.
-/// Allows for interacting with each frame of the state.
+/// Represents an icon state in a BYOND DMI file. Allows for interacting with each frame of the state.
 /// </summary>
 public sealed class DMIState : IDisposable
 {
-    private Image<Rgba32>[][] _images; // Stores each frame image following the [direction][frame] pattern.
-
+    private Image<Rgba32>?[][] _images; // Stores each frame image following the [direction][frame] pattern.
+    private bool _disposed;
+    
     /// <summary>
     /// Initializes a blank DMI state.
     /// </summary>
@@ -100,19 +141,53 @@ public sealed class DMIState : IDisposable
         DirectionDepth = (DirectionDepth)_images.Length;
     }
 
+    /// <summary>
+    /// The name of the state, accessible from DM.
+    /// </summary>
     public string Name
     {
         get => Data.State;
         set => Data.State = value;
     }
 
+    /// <summary>
+    /// The directions for this state.
+    /// </summary>
     public int Dirs => Data.Dirs;
+
+    /// <summary>
+    /// The frames for this state.
+    /// </summary>
     public int Frames => Data.Frames;
+
+    /// <summary>
+    /// The height of this state in pixels.
+    /// </summary>
     public int Height { get; }
+
+    /// <summary>
+    /// The width of this state in pixels.
+    /// </summary>
     public int Width { get; }
+
+    /// <summary>
+    /// The total number of frames in this state.
+    /// </summary>
     public int TotalFrames => _images.Sum(x => x.Count(y => y != null));
+
+    /// <summary>
+    /// The total possible number of frames in this state.
+    /// </summary>
     public int FrameCapacity => _images.Sum(x => x.Length);
+
+    /// <summary>
+    /// The direction depth of this state.
+    /// </summary>
     public DirectionDepth DirectionDepth { get; private set; }
+
+    /// <summary>
+    /// The metadata store for this state.
+    /// </summary>
     public StateMetadata Data { get; } // Stores key, value pairs from DMI file metadata.
 
     /// <summary>
@@ -120,10 +195,18 @@ public sealed class DMIState : IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
         foreach (var image in _images.SelectMany(x => x).Where(x => x != null))
         {
-            image.Dispose();
+            image!.Dispose();
         }
+        
+        // Empty the array of images to remove all references
+        _images = Array.Empty<Image<Rgba32>[]>();
+        
+        _disposed = true;
     }
 
     /// <summary>
@@ -248,10 +331,16 @@ public sealed class DMIState : IDisposable
         for (var frame = 0; frame < Frames; frame++)
         {
             var cursor = _images[(int)direction][frame];
-            var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
-            metadata.FrameDelay = (int)(Data.Delay[frame] * 10.0); // GIF frames are 10ms compared to 100ms tick
-            metadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels 
-            toReturn.Frames.InsertFrame(frame, cursor.Frames.RootFrame);
+            if (cursor != null)
+            {
+                var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
+                metadata.FrameDelay = (int)(Data.Delay![frame] * 10.0); // GIF frames are 10ms compared to 100ms tick
+                metadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels 
+                toReturn.Frames.InsertFrame(frame, cursor.Frames.RootFrame);
+            }
+            else
+                throw new InvalidOperationException(
+                    $"Image data missing frame for direction {direction}, cannot animate");
         }
 
         // Final process
@@ -273,7 +362,7 @@ public sealed class DMIState : IDisposable
     /// <param name="direction">The direction of the state to retrieve the gif for.</param>
     /// <param name="encoder">The GifEncoder to use, if null a default is generated. Only override if required.</param>
     [SuppressMessage("ReSharper", "InconsistentNaming")]
-    public void SaveAnimatedGIF(Stream stream, StateDirection direction, GifEncoder encoder = null)
+    public void SaveAnimatedGIF(Stream stream, StateDirection direction, GifEncoder? encoder = null)
     {
         if (!IsAnimated())
         {
@@ -296,14 +385,14 @@ public sealed class DMIState : IDisposable
     /// <param name="direction">The direction of the frame</param>
     /// <param name="frame">The frame index</param>
     /// <returns>An ImageSharp Image representing the frame</returns>
-    public Image<Rgba32> GetFrame(StateDirection direction, int frame) => _images[(int)direction][frame];
+    public Image<Rgba32>? GetFrame(StateDirection direction, int frame) => _images[(int)direction][frame];
 
     /// <summary>
     /// Helper for frame retrieval, defaults to the North (1) direction
     /// </summary>
     /// <param name="frame">The frame index</param>
     /// <returns>An ImageSharp Image representing the frame</returns>
-    public Image<Rgba32> GetFrame(int frame) => GetFrame(StateDirection.South, frame);
+    public Image<Rgba32>? GetFrame(int frame) => GetFrame(StateDirection.South, frame);
 
     /// <summary>
     /// Sets the content of a frame in a state.
@@ -368,7 +457,7 @@ public sealed class DMIState : IDisposable
             return;
 
         var minDepth = Math.Min((int)depth, (int)DirectionDepth);
-        var temp = new Image<Rgba32>[(int)depth][];
+        var temp = new Image<Rgba32>?[(int)depth][];
         for (var i = 0; i < minDepth; i++)
         {
             temp[i] = _images[i];
@@ -382,7 +471,7 @@ public sealed class DMIState : IDisposable
                 for (var j = 0; j < Frames; j++)
                 {
                     var cursor = _images[i][j];
-                    cursor.Dispose();
+                    cursor?.Dispose();
                 }
             }
         }
@@ -410,12 +499,12 @@ public sealed class DMIState : IDisposable
         if (Frames == frames)
             return;
 
-        var temp = new Image<Rgba32>[Dirs][];
+        var temp = new Image<Rgba32>?[Dirs][];
         var minFrames = Math.Min(Frames, frames);
 
         for (var dir = 0; dir < Dirs; dir++)
         {
-            temp[dir] = new Image<Rgba32>[frames];
+            temp[dir] = new Image<Rgba32>?[frames];
             for (var i = 0; i < minFrames; i++)
             {
                 temp[dir][i] = _images[dir][i];
@@ -427,7 +516,7 @@ public sealed class DMIState : IDisposable
 
             for (var i = minFrames; i < Frames; i++)
             {
-                _images[dir][i].Dispose();
+                _images[dir][i]?.Dispose();
             }
         }
 

@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+    branches: [master, release-*]
+  pull_request:
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: ubuntu
+            os: ubuntu-22.04
+          - name: windows
+            os: windows-2022
+    name: ${{ matrix.job.name }}
+    runs-on: ${{ matrix.job.os }}
+    steps:
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: |
+            6.0.411
+            7.0.305
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        run: dotnet test --no-build --verbosity normal DMISharp.Tests/DMISharp.Tests.csproj --logger GitHubActions
+      - if: matrix.job.name == 'ubuntu'
+        uses: actions/upload-artifact@v3
+        with:
+          name: NuGet packages
+          path: ./**/*.nupkg

@@ -1,0 +1,22 @@
+name: release
+on:
+  push:
+    tags: ["*.*.*"]
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.305
+      - uses: actions/checkout@v3
+      - run: dotnet build --configuration Release --nologo
+      - name: push
+        env:
+          SOURCE: ${{ secrets.NUGET_PUSH_SOURCE }}
+          API_KEY: ${{ secrets.NUGET_PUSH_API_KEY }}
+        if: env.SOURCE != '' || env.API_KEY != ''
+        run: dotnet nuget push ./**/*.nupkg --source ${{ env.SOURCE }} --api-key ${{ env.API_KEY }}

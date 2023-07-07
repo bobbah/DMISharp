@@ -31,7 +31,9 @@ public class DMICreationTests
         foreach (var source in sourceData)
         {
             var img = Image.Load<Rgba32>($@"Data/Input/SourceImages/{source}.png");
+#pragma warning disable CA2000
             var newState = new DMIState(source, DirectionDepth.One, 1, 32, 32);
+#pragma warning restore CA2000
             newState.SetFrame(img, 0);
             newDMI.AddState(newState);
         }
@@ -46,7 +48,9 @@ public class DMICreationTests
 
         // Create state
         var img = Image.Load<Rgba32>($@"Data/Input/SourceImages/steve32.png");
+#pragma warning disable CA2000
         var newState = new DMIState("steve32", DirectionDepth.One, 1, 32, 32);
+#pragma warning restore CA2000
         newState.SetFrame(img, 0);
         newDMI.AddState(newState);
 

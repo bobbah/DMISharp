@@ -23,6 +23,11 @@ public sealed class DMIFile : IDisposable, IExportable
     private bool _disposedValue;
     private List<DMIState> _states;
 
+    /// <summary>
+    /// Constructs a new <see cref="DMIFile"/> for a provided pair of state dimensions.
+    /// </summary>
+    /// <param name="frameWidth">The width of frames in each state in pixels</param>
+    /// <param name="frameHeight">The height of frames in each state in pixels</param>
     public DMIFile(int frameWidth, int frameHeight)
     {
         Metadata = new DMIMetadata(4.0, frameWidth, frameHeight);
@@ -30,7 +35,7 @@ public sealed class DMIFile : IDisposable, IExportable
     }
 
     /// <summary>
-    /// Initializes a new instance of a DMI File.
+    /// Constructs a new <see cref="DMIFile"/> from a provided stream.
     /// </summary>
     /// <param name="stream">The Stream containing the DMI file data.</param>
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
@@ -60,17 +65,24 @@ public sealed class DMIFile : IDisposable, IExportable
     {
     }
 
+    /// <summary>
+    /// The metadata for this DMI File.
+    /// </summary>
     public DMIMetadata Metadata { get; }
+
+    /// <summary>
+    /// All of the <see cref="DMIState"/> entries for this DMI file.
+    /// </summary>
     public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
 
     /// <summary>
     /// Saves a DMI File to a stream. The resulting file is .dmi-ready
     /// </summary>
-    /// <param name="stream">The stream to save the DMI File to.</param>
+    /// <param name="dataStream">The stream to save the DMI File to.</param>
     /// <returns>True if the file was saved, false otherwise</returns>
-    public void Save(Stream stream)
+    public void Save(Stream dataStream)
     {
-        if (stream == null) throw new ArgumentNullException(nameof(stream), "Target stream cannot be null!");
+        if (dataStream == null) throw new ArgumentNullException(nameof(dataStream), "Target stream cannot be null!");
 
         // prepare frames
         var frames = new List<Image<Rgba32>>();
@@ -80,7 +92,12 @@ public sealed class DMIFile : IDisposable, IExportable
             {
                 for (var dir = 0; dir < state.Dirs; dir++)
                 {
-                    frames.Add(state.GetFrame((StateDirection)dir, frame));
+                    var foundFrame = state.GetFrame((StateDirection)dir, frame);
+                    if (foundFrame != null)
+                        frames.Add(foundFrame);
+                    else
+                        throw new InvalidOperationException(
+                            $"Failed to get frame for state: {dir} frame {frame} is null");
                 }
             }
         }
@@ -197,7 +214,7 @@ public sealed class DMIFile : IDisposable, IExportable
         // If there is no possibility of a color palette we can return at this point
         if (colors.Count > 256)
         {
-            img.SaveAsPng(stream, pngEncoder);
+            img.SaveAsPng(dataStream, pngEncoder);
             return;
         }
 
@@ -226,7 +243,7 @@ public sealed class DMIFile : IDisposable, IExportable
 
         var smallest = paletteMs.Length < normalMs.Length ? paletteMs : normalMs;
         smallest.Seek(0, SeekOrigin.Begin);
-        smallest.CopyTo(stream);
+        smallest.CopyTo(dataStream);
     }
 
     /// <summary>
@@ -263,15 +280,19 @@ public sealed class DMIFile : IDisposable, IExportable
     {
         var builder = new StringBuilder();
         builder.Append(
-            $"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n");
+            FormattableString.Invariant(
+                $"# BEGIN DMI\nversion = {Metadata.Version:0.0}\n\twidth = {Metadata.FrameWidth}\n\theight = {Metadata.FrameHeight}\n"));
 
         foreach (var state in States)
         {
-            builder.Append($"state = \"{state.Name}\"\n\tdirs = {state.Dirs}\n\tframes = {state.Frames}\n");
-            if (state.Data.Delay != null) builder.Append($"\tdelay = {string.Join(",", state.Data.Delay)}\n");
-            if (state.Data.Loop > 0) builder.Append($"\tloop = {state.Data.Loop}\n");
+            builder.Append(
+                FormattableString.Invariant(
+                    $"state = \"{state.Name}\"\n\tdirs = {state.Dirs}\n\tframes = {state.Frames}\n"));
+            if (state.Data.Delay != null)
+                builder.Append(FormattableString.Invariant($"\tdelay = {string.Join(",", state.Data.Delay)}\n"));
+            if (state.Data.Loop > 0) builder.Append(FormattableString.Invariant($"\tloop = {state.Data.Loop}\n"));
             if (state.Data.Hotspots != null)
-                builder.Append($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n");
+                builder.Append(FormattableString.Invariant($"\thotspots = {string.Join(",", state.Data.Hotspots)}\n"));
             if (state.Data.Movement) builder.Append("\tmovement = 1\n");
             if (state.Data.Rewind) builder.Append("\trewind = 1\n");
         }
@@ -357,10 +378,9 @@ public sealed class DMIFile : IDisposable, IExportable
     /// </summary>
     /// <param name="other">The DMI file to import states from</param>
     /// <returns>The number of states imported</returns>
-    public int ImportStates(DMIFile other)
+    public int ImportStates(DMIFile? other)
     {
-        if (other is { States: not null, Metadata: not null }
-            && Metadata != null
+        if (other != null
             && other.Metadata.FrameHeight == Metadata.FrameHeight
             && other.Metadata.FrameWidth == Metadata.FrameWidth)
         {
@@ -375,10 +395,8 @@ public sealed class DMIFile : IDisposable, IExportable
 
             return added;
         }
-        else
-        {
-            return 0;
-        }
+
+        return 0;
     }
 
     /// <summary>
@@ -390,7 +408,7 @@ public sealed class DMIFile : IDisposable, IExportable
     }
 
     /// <summary>
-    /// Removes a state from a DMI File
+    /// Removes a state from a DMI File.
     /// </summary>
     /// <param name="toRemove">The DMIState to remove</param>
     /// <returns>True if the state was removed, otherwise false</returns>
@@ -400,20 +418,20 @@ public sealed class DMIFile : IDisposable, IExportable
         {
             return Metadata.States.Remove(toRemove.Data);
         }
-        else
-        {
-            return false;
-        }
+
+        return false;
     }
 
     /// <summary>
-    /// Adds a state to a DMI File
+    /// Adds a state to a DMI File.
     /// </summary>
     /// <param name="toAdd">The DMIState to add</param>
     /// <returns>True if the state was added, otherwise false</returns>
     public bool AddState(DMIState toAdd)
     {
-        if (!StateValidForFile(toAdd) || toAdd?.Data == null)
+        if (toAdd == null)
+            throw new ArgumentNullException(nameof(toAdd));
+        if (!StateValidForFile(toAdd))
             return false;
 
         _states.Add(toAdd);
@@ -422,13 +440,12 @@ public sealed class DMIFile : IDisposable, IExportable
     }
 
     /// <summary>
-    /// Ensures that a state is valid for a DMI File's existing dimensions
+    /// Ensures that a state is valid for a DMI File's existing dimensions.
     /// </summary>
     /// <param name="toCheck">The DMIState to check against the file</param>
     /// <returns>True if the state is compatible with the file, false otherwise</returns>
     private bool StateValidForFile(DMIState toCheck) =>
-        toCheck != null
-        && toCheck.Height == Metadata.FrameHeight
+        toCheck.Height == Metadata.FrameHeight
         && toCheck.Width == Metadata.FrameWidth;
 
     private static PngBitDepth GetBitDepth(ReadOnlySpan<uint> colors)
@@ -442,6 +459,9 @@ public sealed class DMIFile : IDisposable, IExportable
         };
     }
 
+    /// <summary>
+    /// Dispose of the DMI file.
+    /// </summary>
     public void Dispose()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
@@ -458,13 +478,13 @@ public sealed class DMIFile : IDisposable, IExportable
 
         if (disposing)
         {
-            foreach (var state in States)
+            foreach (var state in _states)
             {
                 state.Dispose();
             }
         }
 
-        _states = null;
+        _states.Clear();
         _disposedValue = true;
     }
 }

@@ -2,25 +2,25 @@
 
     <PropertyGroup>
         <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>DMISharp</PackageId>
         <Authors>Bobbahbrown</Authors>
         <Company>MelonMesa</Company>
+        <Copyright>Copyright © $([System.DateTime]::Now.Year) MelonMesa</Copyright>
         <Description>Library for handling BYOND DMI files.</Description>
-        <Copyright>Copyright (c) 2023 MelonMesa</Copyright>
         <PackageProjectUrl>https://github.com/bobbahbrown/DMISharp</PackageProjectUrl>
         <RepositoryUrl>https://github.com/bobbahbrown/DMISharp</RepositoryUrl>
         <RepositoryType>Git</RepositoryType>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-        <Version>2.0.0</Version>
-        <FileVersion>2.0.0.0</FileVersion>
         <PackageIcon>dmisharp.png</PackageIcon>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-        <PackageTags>DMI BYOND SpaceStation13</PackageTags>
-        <PackageReleaseNotes>
-            - Updated to .NET 7
-            - Updated ImageSharp to 3
-        </PackageReleaseNotes>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageTags>DMI BYOND SpaceStation13 Space Station 13 tgstation tg</PackageTags>
+        <PackageReleaseNotes>https://github.com/bobbahbrown/DMISharp/blob/master/CHANGELOG.md</PackageReleaseNotes>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <MinVerMinimumMajorMinor>2.0</MinVerMinimumMajorMinor>
     </PropertyGroup>
 
     <ItemGroup>
@@ -29,12 +29,21 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
+        <PackageReference Include="MinVer" Version="4.3.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
 
     <ItemGroup>
         <None Include="..\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\LICENSE" Pack="true" PackagePath="\" />
         <None Include="..\dmisharp.png" Pack="true" PackagePath="\" />
     </ItemGroup>
 
