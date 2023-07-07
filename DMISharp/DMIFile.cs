@@ -145,7 +145,9 @@ public sealed class DMIFile : IDisposable, IExportable
                         var destSpan = imgAccessor.GetRowSpan(ypx + yCap * Metadata.FrameHeight);
                         for (var xpx = 0; xpx < Metadata.FrameWidth; xpx++)
                         {
-                            destSpan[xpx + xCap * Metadata.FrameWidth] = sourceSpan[xpx];
+                            ref var sourcePixel = ref sourceSpan[xpx];
+                            ref var destPixel = ref destSpan[xpx + xCap * Metadata.FrameWidth];
+                            destPixel = sourcePixel;
                         }
                     }
                 });
@@ -166,24 +168,25 @@ public sealed class DMIFile : IDisposable, IExportable
         {
             for (var ypx = 0; ypx < height; ypx++)
             {
+                var row = accessor.GetRowSpan(ypx);
                 for (var xpx = 0; xpx < width; xpx++)
                 {
-                    var row = accessor.GetRowSpan(ypx);
+                    ref var pixel = ref row[xpx];
 
                     // Check for transparency, if we ultimately don't have any we can remove the alpha layer
-                    if (!hasTransparency && row[xpx].A < byte.MaxValue)
+                    if (!hasTransparency && pixel.A < byte.MaxValue)
                         hasTransparency = true;
 
                     // Set color to be transparent black if fully transparent
-                    if (row[xpx].A == 0)
-                        row[xpx].FromRgba32(transparent);
+                    if (pixel.A == 0)
+                        pixel.FromRgba32(transparent);
 
                     // Check for greyscale pristine-ness
-                    if (pristineGreyscale && !(row[xpx].R == row[xpx].G && row[xpx].G == row[xpx].B))
+                    if (pristineGreyscale && !(pixel.R == pixel.G && pixel.G == pixel.B))
                         pristineGreyscale = false;
 
                     // Count distinct colors to determine best approach with palette
-                    colors.Add(row[xpx].PackedValue);
+                    colors.Add(pixel.PackedValue);
                 }
             }
         });

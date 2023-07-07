@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using Microsoft.Toolkit.HighPerformance.Enumerables;
 using Microsoft.Toolkit.HighPerformance;
@@ -86,14 +85,14 @@ public ref struct DMITokenizer
     /// </summary>
     /// <param name="value">The value to compare against</param>
     /// <returns>If the two values are equal</returns>
-    public bool KeyEquals(ReadOnlySpan<char> value) => CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
+    public readonly bool KeyEquals(ReadOnlySpan<char> value) => CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
 
 
     /// <summary>
     /// Attempts to return the current value token as an integer.
     /// </summary>
     /// <returns>The current value token as an integer</returns>
-    public int ValueAsInt()
+    public readonly int ValueAsInt()
     {
         var currentValue = CurrentValue;
 
@@ -112,7 +111,7 @@ public ref struct DMITokenizer
     /// Attempts to return the current value token as a double.
     /// </summary>
     /// <returns>The current value token as a double</returns>
-    public double ValueAsDouble()
+    public readonly double ValueAsDouble()
     {
         var currentValue = CurrentValue;
 
@@ -131,18 +130,25 @@ public ref struct DMITokenizer
     /// Attempts to return the current value token as a bool.
     /// </summary>
     /// <returns>The current value token as a bool</returns>
-    public bool ValueAsBool() => ValueAsInt() == 1;
+    public readonly bool ValueAsBool() => ValueAsInt() == 1;
 
     /// <summary>
     /// Attempts to return the current value token as an array of doubles.
     /// </summary>
     /// <returns>The current value token as an array of doubles</returns>
-    public double[] ValueAsDoubleArray()
+    public readonly double[] ValueAsDoubleArray()
     {
         try
         {
-            return CurrentValue.ToString().Split(',')
-                .Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+            var toReturn = new double[CurrentValue.Count(',') + 1];
+            var span = new Span<double>(toReturn);
+            var currIdx = 0;
+            foreach (var token in CurrentValue.Tokenize(','))
+            {
+                span[currIdx++] = double.Parse(token, provider: CultureInfo.InvariantCulture);
+            }
+
+            return toReturn;
         }
         catch (FormatException e)
         {
@@ -156,12 +162,19 @@ public ref struct DMITokenizer
     /// Attempts to return the current value token as an array of ints.
     /// </summary>
     /// <returns>The current value token as an array of ints</returns>
-    public int[] ValueAsIntArray()
+    public readonly int[] ValueAsIntArray()
     {
         try
         {
-            return CurrentValue.ToString().Split(',')
-                .Select(x => int.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+            var toReturn = new int[CurrentValue.Count(',') + 1];
+            var span = new Span<int>(toReturn);
+            var currIdx = 0;
+            foreach (var token in CurrentValue.Tokenize(','))
+            {
+                span[currIdx++] = int.Parse(token, provider: CultureInfo.InvariantCulture);
+            }
+
+            return toReturn;
         }
         catch (FormatException e)
         {
