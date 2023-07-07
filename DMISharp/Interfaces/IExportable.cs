@@ -1,10 +1,9 @@
 ﻿using System.IO;
 
-namespace DMISharp.Interfaces
+namespace DMISharp.Interfaces;
+
+public interface IExportable
 {
-    public interface IExportable
-    {
-        void Save(Stream dataStream);
-        bool CanSave();
-    }
+    void Save(Stream dataStream);
+    bool CanSave();
 }

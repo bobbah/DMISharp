@@ -5,14 +5,11 @@ VisualStudioVersion = 16.0.28809.33
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMISharp", "DMISharp\DMISharp.csproj", "{6910CB5B-7C70-4533-80D3-7B3B9E4D7F96}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMISharpTests", "DMISharpTests\DMISharpTests.csproj", "{BD696644-5CDF-4BD3-9E07-554FCAAA1D7F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMISharp.Tests", "DMISharp.Tests\DMISharp.Tests.csproj", "{BD696644-5CDF-4BD3-9E07-554FCAAA1D7F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4052B10A-9B69-42AE-85C1-53B2797C667C}"
-	ProjectSection(SolutionItems) = preProject
-		.github\workflows\run-tests.yml = .github\workflows\run-tests.yml
-	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMISharpBenchmark", "DMISharpBenchmark\DMISharpBenchmark.csproj", "{1DEA8A5D-3FCA-4280-96D2-63C74FFCA100}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMISharp.Benchmark", "DMISharp.Benchmark\DMISharp.Benchmark.csproj", "{55D0051C-05C7-4455-89E7-FFACEE1C49D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,10 +25,10 @@ Global
 		{BD696644-5CDF-4BD3-9E07-554FCAAA1D7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD696644-5CDF-4BD3-9E07-554FCAAA1D7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD696644-5CDF-4BD3-9E07-554FCAAA1D7F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1DEA8A5D-3FCA-4280-96D2-63C74FFCA100}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1DEA8A5D-3FCA-4280-96D2-63C74FFCA100}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1DEA8A5D-3FCA-4280-96D2-63C74FFCA100}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1DEA8A5D-3FCA-4280-96D2-63C74FFCA100}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55D0051C-05C7-4455-89E7-FFACEE1C49D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55D0051C-05C7-4455-89E7-FFACEE1C49D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55D0051C-05C7-4455-89E7-FFACEE1C49D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55D0051C-05C7-4455-89E7-FFACEE1C49D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
