@@ -20,6 +20,7 @@
             - Updated to .NET 7
             - Updated ImageSharp to 3
         </PackageReleaseNotes>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -32,12 +33,9 @@
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
 
-    <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) OR $(TargetFramework.StartsWith('netstandard'))">
-        <PackageReference Include="IndexRange" Version="1.0.1" />
-    </ItemGroup>
-
     <ItemGroup>
-        <None Include="NugetIcon\dmisharp.png" Pack="true" PackagePath="" />
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\dmisharp.png" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>
