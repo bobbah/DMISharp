@@ -333,3 +333,4 @@ ASALocalRun/
 DMISharpBenchmark/Data/Output/*.png
 DMISharpBenchmark/Data/Output/*.gif
 DMISharpBenchmark/Data/Output/*.dmi
+Benchmarks/
