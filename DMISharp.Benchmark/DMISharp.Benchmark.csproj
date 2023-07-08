@@ -8,10 +8,7 @@
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
     </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\DMISharp\DMISharp.csproj" />
-    </ItemGroup>
+    
 
     <ItemGroup>
         <None Update="Data\Input\352x352.dmi">
@@ -35,6 +32,11 @@
         <None Update="Data\Output\EmptyFile.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+    </ItemGroup>
+    
+
+    <ItemGroup>
+      <ProjectReference Include="..\DMISharp\DMISharp.csproj" />
     </ItemGroup>
 
 </Project>

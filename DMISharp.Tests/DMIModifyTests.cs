@@ -16,6 +16,7 @@ public static class DMIModifyTests
 
         // Act
         var result = file.RemoveState(stateToRemove);
+        stateToRemove.Dispose();
 
         // Assert
         Assert.True(result);

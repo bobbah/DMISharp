@@ -263,10 +263,8 @@ public sealed class DMIState : IDisposable
                     {
                         var sourceSpan = sourceAccessor.GetRowSpan(ypx + yOffset);
                         var frameSpan = frameAccessor.GetRowSpan(ypx);
-                        for (var xpx = 0; xpx < width; xpx++)
-                        {
-                            frameSpan[xpx] = sourceSpan[xpx + xOffset];
-                        }
+                        
+                        sourceSpan.Slice(xOffset, width).CopyTo(frameSpan);
                     }
                 });
 
@@ -435,6 +433,8 @@ public sealed class DMIState : IDisposable
     /// <param name="frame">The frame index</param>
     public void DeleteFrame(StateDirection direction, int frame)
     {
+        // Ensure image is disposed
+        _images[(int)direction][frame]?.Dispose();
         _images[(int)direction][frame] = null;
     }
 
@@ -537,9 +537,7 @@ public sealed class DMIState : IDisposable
         if (_images.Length != (int)DirectionDepth) return false;
 
         // check that animations delays are correct lengths
-        if (Data.Delay != null && Data.Delay.Length != Data.Frames) return false;
-
-        return true;
+        return Data.Delay == null || Data.Delay.Length == Data.Frames;
     }
 
     #region Animation Attributes
