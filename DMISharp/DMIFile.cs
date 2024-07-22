@@ -143,12 +143,7 @@ public sealed class DMIFile : IDisposable, IExportable
                     {
                         var sourceSpan = targetAccessor.GetRowSpan(ypx);
                         var destSpan = imgAccessor.GetRowSpan(ypx + yCap * Metadata.FrameHeight);
-                        for (var xpx = 0; xpx < Metadata.FrameWidth; xpx++)
-                        {
-                            ref var sourcePixel = ref sourceSpan[xpx];
-                            ref var destPixel = ref destSpan[xpx + xCap * Metadata.FrameWidth];
-                            destPixel = sourcePixel;
-                        }
+                        sourceSpan.CopyTo(destSpan.Slice(xCap * Metadata.FrameWidth, Metadata.FrameWidth));
                     }
                 });
             }
@@ -362,7 +357,10 @@ public sealed class DMIFile : IDisposable, IExportable
     {
         _states = _states.OrderBy(x => x.Name).ToList();
         Metadata.States.Clear();
-        Metadata.States.AddRange(_states.Select(x => x.Data).ToList());
+        foreach (var state in _states)
+        {
+            Metadata.States.Add(state.Data);
+        }
     }
 
     /// <summary>
@@ -373,7 +371,10 @@ public sealed class DMIFile : IDisposable, IExportable
     {
         _states = _states.OrderBy(x => x, comparer).ToList();
         Metadata.States.Clear();
-        Metadata.States.AddRange(_states.Select(x => x.Data).ToList());
+        foreach (var state in _states)
+        {
+            Metadata.States.Add(state.Data);
+        }
     }
 
     /// <summary>
