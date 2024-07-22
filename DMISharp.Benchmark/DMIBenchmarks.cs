@@ -2,15 +2,28 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Jobs;
 
 namespace DMISharp.Benchmark;
 
-[MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net70)]
+[MemoryDiagnoser, Config(typeof(DMIBenchmarkConfig))]
 [SuppressMessage("Performance", "CA1822:Mark members as static")]
 public class DMIBenchmarks
 {
+    private class DMIBenchmarkConfig : ManualConfig
+    {
+        public DMIBenchmarkConfig()
+        {
+            var baseJob = Job.Default;
+            
+            AddJob(baseJob.WithNuGet("DMISharp", "2.0.2").WithRuntime(CoreRuntime.Core70).AsBaseline());
+            AddJob(baseJob.WithRuntime(CoreRuntime.Core70));
+            AddJob(baseJob.WithRuntime(CoreRuntime.Core80));
+        }
+    }
+    
     [Benchmark]
     public DMIFile ReadSmallDMIFile() => new("Data/Input/small.dmi");
 
