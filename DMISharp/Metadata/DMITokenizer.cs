@@ -1,8 +1,8 @@
 using System;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using Microsoft.Toolkit.HighPerformance.Enumerables;
-using Microsoft.Toolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
+using CommunityToolkit.HighPerformance.Enumerables;
 
 namespace DMISharp.Metadata;
 
@@ -85,7 +85,8 @@ public ref struct DMITokenizer
     /// </summary>
     /// <param name="value">The value to compare against</param>
     /// <returns>If the two values are equal</returns>
-    public readonly bool KeyEquals(ReadOnlySpan<char> value) => CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
+    public readonly bool KeyEquals(ReadOnlySpan<char> value) =>
+        CurrentKey.Equals(value, StringComparison.OrdinalIgnoreCase);
 
 
     /// <summary>
@@ -140,7 +141,12 @@ public ref struct DMITokenizer
     {
         try
         {
+#if (NET8_0_OR_GREATER)
+            var toReturn = new double[System.MemoryExtensions.Count(CurrentValue, ',') + 1];
+#else
             var toReturn = new double[CurrentValue.Count(',') + 1];
+#endif
+            
             var span = new Span<double>(toReturn);
             var currIdx = 0;
             foreach (var token in CurrentValue.Tokenize(','))
@@ -166,7 +172,12 @@ public ref struct DMITokenizer
     {
         try
         {
+#if (NET8_0_OR_GREATER)
+            var toReturn = new int[System.MemoryExtensions.Count(CurrentValue, ',') + 1];
+#else
             var toReturn = new int[CurrentValue.Count(',') + 1];
+#endif
+
             var span = new Span<int>(toReturn);
             var currIdx = 0;
             foreach (var token in CurrentValue.Tokenize(','))
