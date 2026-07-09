@@ -66,10 +66,9 @@ internal readonly struct NoFrillsQuantizer<TPixel> : IQuantizer<TPixel>
 
     public byte GetQuantizedColor(TPixel color, out TPixel match)
     {
-        if (!_paletteLookup.ContainsKey(color))
+        if (!_paletteLookup.TryGetValue(color, out var paletteIdx))
             throw new ArgumentException("Unknown or invalid color for existing palette");
 
-        var paletteIdx = _paletteLookup[color];
         match = Palette.Span[paletteIdx];
         return (byte)paletteIdx;
     }
