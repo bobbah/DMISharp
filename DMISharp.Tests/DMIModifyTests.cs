@@ -1,4 +1,8 @@
-﻿using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using DMISharp.Metadata;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using Xunit;
 
 namespace DMISharp.Tests;
@@ -64,5 +68,63 @@ public static class DMIModifyTests
         // Assert
         Assert.False(arrowState.IsReadyForSave());
         Assert.False(file.CanSave());
+    }
+
+    [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
+    public static void StatesShouldReuseReadOnlyView()
+    {
+        using var file = new DMIFile(1, 1);
+        var view = file.States;
+
+        file.AddState(new DMIState("state", DirectionDepth.One, 1, 1, 1));
+
+        Assert.Same(view, file.States);
+        Assert.Single(view);
+    }
+
+    [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
+    public static void ImportStatesShouldPreserveOrderMetadataAndOwnership()
+    {
+        using var destination = new DMIFile(1, 1);
+        using var source = new DMIFile(1, 1);
+        var existing = new DMIState("existing", DirectionDepth.One, 1, 1, 1);
+        var first = new DMIState("first", DirectionDepth.One, 1, 1, 1);
+        var second = new DMIState("second", DirectionDepth.One, 1, 1, 1);
+        first.SetFrame(new Image<Rgba32>(1, 1), 0);
+        destination.AddState(existing);
+        source.AddState(first);
+        source.AddState(second);
+
+        var added = destination.ImportStates(source);
+        source.Dispose();
+
+        Assert.Equal(2, added);
+        Assert.Equal(new[] { existing, first, second }, destination.States);
+        Assert.Equal(destination.States.Select(state => state.Data), destination.Metadata.States);
+        Assert.Empty(source.States);
+        Assert.Empty(source.Metadata.States);
+        Assert.Equal(1, first.TotalFrames);
+    }
+
+    [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
+    public static void ImportStatesShouldPreserveUnrelatedMetadata()
+    {
+        using var destination = new DMIFile(1, 1);
+        using var source = new DMIFile(1, 1);
+        var first = new DMIState("first", DirectionDepth.One, 1, 1, 1);
+        var second = new DMIState("second", DirectionDepth.One, 1, 1, 1);
+        var unrelated = new StateMetadata("unrelated");
+        source.AddState(first);
+        source.AddState(second);
+        source.Metadata.States.Insert(0, unrelated);
+        source.Metadata.States.Remove(first.Data);
+
+        destination.ImportStates(source);
+
+        Assert.Equal(new[] { unrelated }, source.Metadata.States);
+        Assert.Equal(new[] { first.Data, second.Data }, destination.Metadata.States);
     }
 }
