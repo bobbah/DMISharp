@@ -6,7 +6,6 @@ using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Quantization;
 
 namespace DMISharp;
@@ -397,31 +396,54 @@ public sealed class DMIState : IDisposable
 
         // Develop gif
         var toReturn = new Image<Rgba32>(Width, Height);
-        for (var frame = 0; frame < Frames; frame++)
+        try
         {
-            var cursor = GetFrame(direction, frame);
-            if (cursor != null)
+            for (var frame = 0; frame < Frames; frame++)
             {
-                var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
+                var cursor = GetFrame(direction, frame);
+                if (cursor == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Image data missing frame for direction {direction}, cannot animate");
+                }
+
+                var outputFrame = toReturn.Frames.AddFrame(cursor.Frames.RootFrame);
+                var metadata = outputFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
                 metadata.FrameDelay = (int)(Data.Delay![frame] * 10.0); // GIF frames are 10ms compared to 100ms tick
-                metadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels 
-                toReturn.Frames.InsertFrame(frame, cursor.Frames.RootFrame);
+                metadata.DisposalMethod = GifDisposalMethod.RestoreToBackground; // Ensures transparent pixels
+                ClearTransparentPixels(outputFrame);
             }
-            else
-                throw new InvalidOperationException(
-                    $"Image data missing frame for direction {direction}, cannot animate");
+
+            toReturn.Frames.RemoveFrame(0);
+            var gifMetadata = toReturn.Metadata.GetFormatMetadata(GifFormat.Instance);
+            gifMetadata.ColorTableMode = GifColorTableMode.Local;
+            gifMetadata.RepeatCount = (ushort)Data.Loop;
+
+            return toReturn;
         }
+        catch
+        {
+            toReturn.Dispose();
+            throw;
+        }
+    }
 
-        // Final process
-        var gifMetadata = toReturn.Metadata.GetFormatMetadata(GifFormat.Instance);
-        gifMetadata.ColorTableMode = GifColorTableMode.Local;
-        toReturn.Frames.RemoveFrame(toReturn.Frames.Count - 1); // Remove empty frame at end of the animation
-        toReturn.Mutate(x =>
-            x.BackgroundColor(
-                new Rgba32())); // Specify the animation has a transparent background for transparent pixels
-        gifMetadata.RepeatCount = (ushort)Data.Loop;
-
-        return toReturn;
+    private static void ClearTransparentPixels(ImageFrame<Rgba32> frame)
+    {
+        frame.ProcessPixelRows(static accessor =>
+        {
+            for (var y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < row.Length; x++)
+                {
+                    if (row[x].A == 0)
+                    {
+                        row[x] = default;
+                    }
+                }
+            }
+        });
     }
 
     /// <summary>
