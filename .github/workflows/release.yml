@@ -9,10 +9,10 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.303
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - run: dotnet build --configuration Release --nologo
       - name: push
         env:
