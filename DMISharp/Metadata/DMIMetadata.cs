@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using MetadataExtractor.Formats.Png;
+using SixLabors.ImageSharp.Formats.Png.Chunks;
 
 namespace DMISharp.Metadata;
 
@@ -40,6 +41,15 @@ public class DMIMetadata
         // Get the contents of the DMI metadata
         var data = GetDMIMetadata(stream);
         ParseMetadata(data);
+    }
+
+    internal DMIMetadata(IEnumerable<PngTextData> textData)
+    {
+        States = new List<StateMetadata>();
+        FrameWidth = -1;
+        FrameHeight = -1;
+
+        ParseMetadata(GetDMIMetadata(textData));
     }
 
     /// <summary>
@@ -92,6 +102,19 @@ public class DMIMetadata
         }
 
         return metaDesc.AsSpan()[metaDesc.IndexOf('#', StringComparison.InvariantCultureIgnoreCase)..];
+    }
+
+    private static ReadOnlySpan<char> GetDMIMetadata(IEnumerable<PngTextData> textData)
+    {
+        foreach (var text in textData)
+        {
+            if (DMIStart.IsMatch(text.Value))
+            {
+                return text.Value.AsSpan()[text.Value.IndexOf('#', StringComparison.InvariantCultureIgnoreCase)..];
+            }
+        }
+
+        throw new InvalidOperationException("Failed to find BYOND DMI metadata in PNG text data!");
     }
 
     /// <summary>

@@ -85,6 +85,21 @@ public static class DMIModifyTests
 
     [Fact]
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
+    public static void StatesViewShouldRemainLiveAfterSorting()
+    {
+        using var file = new DMIFile(1, 1);
+        file.AddState(new DMIState("second", DirectionDepth.One, 1, 1, 1));
+        file.AddState(new DMIState("first", DirectionDepth.One, 1, 1, 1));
+        var view = file.States;
+
+        file.SortStates();
+
+        Assert.Same(view, file.States);
+        Assert.Equal(new[] { "first", "second" }, view.Select(state => state.Name));
+    }
+
+    [Fact]
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
     public static void ImportStatesShouldPreserveOrderMetadataAndOwnership()
     {
         using var destination = new DMIFile(1, 1);
