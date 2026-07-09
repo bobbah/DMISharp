@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
@@ -173,12 +172,40 @@ public sealed class DMIState : IDisposable
     /// <summary>
     /// The total number of frames in this state.
     /// </summary>
-    public int TotalFrames => _images.Sum(x => x.Count(y => y != null));
+    public int TotalFrames
+    {
+        get
+        {
+            var total = 0;
+            foreach (var direction in _images)
+            {
+                foreach (var image in direction)
+                {
+                    if (image != null)
+                        total = checked(total + 1);
+                }
+            }
+
+            return total;
+        }
+    }
 
     /// <summary>
     /// The total possible number of frames in this state.
     /// </summary>
-    public int FrameCapacity => _images.Sum(x => x.Length);
+    public int FrameCapacity
+    {
+        get
+        {
+            var capacity = 0;
+            foreach (var direction in _images)
+            {
+                capacity = checked(capacity + direction.Length);
+            }
+
+            return capacity;
+        }
+    }
 
     /// <summary>
     /// The direction depth of this state.
@@ -198,9 +225,12 @@ public sealed class DMIState : IDisposable
         if (_disposed)
             return;
 
-        foreach (var image in _images.SelectMany(x => x).Where(x => x != null))
+        foreach (var direction in _images)
         {
-            image!.Dispose();
+            foreach (var image in direction)
+            {
+                image?.Dispose();
+            }
         }
         
         // Empty the array of images to remove all references
@@ -531,7 +561,14 @@ public sealed class DMIState : IDisposable
     public bool IsReadyForSave()
     {
         // check all directions are populated and equal
-        if (TotalFrames != FrameCapacity) return false;
+        foreach (var direction in _images)
+        {
+            foreach (var image in direction)
+            {
+                if (image == null)
+                    return false;
+            }
+        }
 
         // check all required directions are present
         if (_images.Length != (int)DirectionDepth) return false;
