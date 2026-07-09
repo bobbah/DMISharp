@@ -27,13 +27,13 @@ jobs:
         run: |
           echo ("PRNumber=${{ github.event.pull_request.number }}") >> $env:GITHUB_ENV
         if: matrix.job.name == 'windows'
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             6.0.424
             7.0.410
             8.0.303
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Restore dependencies
@@ -43,7 +43,7 @@ jobs:
       - name: Test
         run: dotnet test --no-build --verbosity normal DMISharp.Tests/DMISharp.Tests.csproj --logger GitHubActions
       - if: matrix.job.name == 'ubuntu'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: NuGet packages
           path: ./**/*.nupkg
