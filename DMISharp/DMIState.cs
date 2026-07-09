@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
@@ -229,7 +228,7 @@ public sealed class DMIState : IDisposable
                 {
                     if (_images[direction][frame] != null || _atlasIndices[direction][frame] >= 0)
                     {
-                        total++;
+                        total = checked(total + 1);
                     }
                 }
             }
@@ -241,7 +240,19 @@ public sealed class DMIState : IDisposable
     /// <summary>
     /// The total possible number of frames in this state.
     /// </summary>
-    public int FrameCapacity => _images.Sum(x => x.Length);
+    public int FrameCapacity
+    {
+        get
+        {
+            var capacity = 0;
+            foreach (var direction in _images)
+            {
+                capacity = checked(capacity + direction.Length);
+            }
+
+            return capacity;
+        }
+    }
 
     /// <summary>
     /// The direction depth of this state.
@@ -263,9 +274,12 @@ public sealed class DMIState : IDisposable
             if (_disposed)
                 return;
 
-            foreach (var image in _images.SelectMany(x => x).Where(x => x != null))
+            foreach (var direction in _images)
             {
-                image!.Dispose();
+                foreach (var image in direction)
+                {
+                    image?.Dispose();
+                }
             }
         
             // Empty the array of images to remove all references
@@ -703,7 +717,14 @@ public sealed class DMIState : IDisposable
     public bool IsReadyForSave()
     {
         // check all directions are populated and equal
-        if (TotalFrames != FrameCapacity) return false;
+        for (var direction = 0; direction < _images.Length; direction++)
+        {
+            for (var frame = 0; frame < _images[direction].Length; frame++)
+            {
+                if (_images[direction][frame] == null && _atlasIndices[direction][frame] < 0)
+                    return false;
+            }
+        }
 
         // check all required directions are present
         if (_images.Length != (int)DirectionDepth) return false;

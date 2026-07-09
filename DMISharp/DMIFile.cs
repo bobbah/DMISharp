@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -22,6 +23,7 @@ public sealed class DMIFile : IDisposable, IExportable
 {
     private bool _disposedValue;
     private List<DMIState> _states;
+    private ReadOnlyCollection<DMIState> _statesView;
 
     /// <summary>
     /// Constructs a new <see cref="DMIFile"/> for a provided pair of state dimensions.
@@ -32,6 +34,7 @@ public sealed class DMIFile : IDisposable, IExportable
     {
         Metadata = new DMIMetadata(4.0, frameWidth, frameHeight);
         _states = new List<DMIState>();
+        _statesView = _states.AsReadOnly();
     }
 
     /// <summary>
@@ -49,6 +52,7 @@ public sealed class DMIFile : IDisposable, IExportable
         using var atlas = new DMIImageAtlas(Image.Load<Rgba32>(stream));
         Metadata = new DMIMetadata(atlas.TextData);
         _states = GetStates(atlas);
+        _statesView = _states.AsReadOnly();
 
         stream.Dispose();
     }
@@ -70,7 +74,7 @@ public sealed class DMIFile : IDisposable, IExportable
     /// <summary>
     /// All of the <see cref="DMIState"/> entries for this DMI file.
     /// </summary>
-    public IReadOnlyCollection<DMIState> States => _states.AsReadOnly();
+    public IReadOnlyCollection<DMIState> States => _statesView;
 
     /// <summary>
     /// Saves a DMI File to a stream. The resulting file is .dmi-ready
@@ -266,13 +270,16 @@ public sealed class DMIFile : IDisposable, IExportable
     /// <returns>True if the file is ready to be saved, otherwise false</returns>
     public bool CanSave()
     {
-        var result = States.Count != 0;
-        foreach (var state in States)
+        if (_states.Count == 0)
+            return false;
+
+        foreach (var state in _states)
         {
-            result = result && state.IsReadyForSave();
+            if (!state.IsReadyForSave())
+                return false;
         }
 
-        return result;
+        return true;
     }
 
     /// <summary>
@@ -378,7 +385,9 @@ public sealed class DMIFile : IDisposable, IExportable
     /// </summary>
     public void SortStates()
     {
-        _states = _states.OrderBy(x => x.Name).ToList();
+        var sortedStates = _states.OrderBy(x => x.Name).ToArray();
+        _states.Clear();
+        _states.AddRange(sortedStates);
         Metadata.States.Clear();
         foreach (var state in _states)
         {
@@ -392,7 +401,9 @@ public sealed class DMIFile : IDisposable, IExportable
     /// <param name="comparer">The comparer to use</param>
     public void SortStates(IComparer<DMIState> comparer)
     {
-        _states = _states.OrderBy(x => x, comparer).ToList();
+        var sortedStates = _states.OrderBy(x => x, comparer).ToArray();
+        _states.Clear();
+        _states.AddRange(sortedStates);
         Metadata.States.Clear();
         foreach (var state in _states)
         {
@@ -411,19 +422,76 @@ public sealed class DMIFile : IDisposable, IExportable
             && other.Metadata.FrameHeight == Metadata.FrameHeight
             && other.Metadata.FrameWidth == Metadata.FrameWidth)
         {
-            var added = 0;
-            while (other.States.Count != 0)
+            var added = other._states.Count;
+            if (added == 0)
+                return 0;
+
+            _states.EnsureCapacity(_states.Count + added);
+            Metadata.States.EnsureCapacity(Metadata.States.Count + added);
+            foreach (var state in other._states)
             {
-                var cursor = other.States.First();
-                other.RemoveState(cursor);
-                AddState(cursor);
-                added++;
+                _states.Add(state);
+                Metadata.States.Add(state.Data);
             }
 
+            if (MetadataMatchesStates(other))
+            {
+                other.Metadata.States.Clear();
+            }
+            else
+            {
+                // Preserve RemoveState's behavior if callers have directly altered public metadata.
+                RemoveTransferredMetadata(other);
+            }
+
+            other._states.Clear();
             return added;
         }
 
         return 0;
+    }
+
+    private static bool MetadataMatchesStates(DMIFile file)
+    {
+        if (file.Metadata.States.Count != file._states.Count)
+            return false;
+
+        var comparer = EqualityComparer<StateMetadata>.Default;
+        for (var i = 0; i < file._states.Count; i++)
+        {
+            if (!comparer.Equals(file.Metadata.States[i], file._states[i].Data))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static void RemoveTransferredMetadata(DMIFile file)
+    {
+        var removals = new Dictionary<StateMetadata, int>();
+        foreach (var state in file._states)
+        {
+            removals.TryGetValue(state.Data, out var count);
+            removals[state.Data] = count + 1;
+        }
+
+        var writeIndex = 0;
+        for (var readIndex = 0; readIndex < file.Metadata.States.Count; readIndex++)
+        {
+            var metadata = file.Metadata.States[readIndex];
+            if (removals.TryGetValue(metadata, out var count) && count != 0)
+            {
+                removals[metadata] = count - 1;
+                continue;
+            }
+
+            file.Metadata.States[writeIndex++] = metadata;
+        }
+
+        if (writeIndex != file.Metadata.States.Count)
+        {
+            file.Metadata.States.RemoveRange(writeIndex, file.Metadata.States.Count - writeIndex);
+        }
     }
 
     /// <summary>
