@@ -66,6 +66,21 @@ public class DMIWriteTests
         file.Save(@"Data/Output/animal_sorted_alphabetically.dmi");
     }
 
+    [Theory]
+    [InlineData("air_meter.dmi", false, 481)]
+    [InlineData("animal.dmi", true, 136490)]
+    public void SavePreservesCompressionOutputSize(string fileName, bool sort, long expectedLength)
+    {
+        using var output = new MemoryStream();
+        using var file = new DMIFile(Path.Combine("Data", "Input", fileName));
+        if (sort)
+            file.SortStates();
+
+        file.Save(output);
+
+        Assert.Equal(expectedLength, output.Length);
+    }
+
     [Fact]
     public void CanWriteAnimations()
     {

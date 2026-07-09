@@ -2,8 +2,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Environments;
-using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -12,7 +10,7 @@ namespace DMISharp.Benchmark;
 
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
-[SimpleJob(RuntimeMoniker.Net80, warmupCount: 3, iterationCount: 5)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 public class DMISaveBenchmarks
 {
     private const int FrameSize = 32;

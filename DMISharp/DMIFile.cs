@@ -191,7 +191,8 @@ public sealed class DMIFile : IDisposable, IExportable
         {
             InterlaceMethod = PngInterlaceMode.None,
             CompressionLevel = PngCompressionLevel.BestCompression,
-            FilterMethod = PngFilterMethod.Adaptive,
+            // ImageSharp 3.1.4 ignored explicit filters, so None preserves existing output and performance.
+            FilterMethod = PngFilterMethod.None,
             TransparentColorMode = PngTransparentColorMode.Clear,
             TextCompressionThreshold = 0, // always compress text chunks
             ChunkFilter = PngChunkFilter.ExcludePhysicalChunk | PngChunkFilter.ExcludeExifChunk |

@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.0.303
+          dotnet-version: 10.0.x
       - uses: actions/checkout@v7
       - run: dotnet build --configuration Release --nologo
       - name: push

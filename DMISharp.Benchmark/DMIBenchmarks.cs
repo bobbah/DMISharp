@@ -46,10 +46,24 @@ internal sealed class DMIReadBenchmarkConfig : ManualConfig
 {
     public DMIReadBenchmarkConfig()
     {
-        var baseJob = Job.Default.WithRuntime(CoreRuntime.Core80);
+        AddJob(Job.Default.WithRuntime(CoreRuntime.Core80).AsBaseline());
+        AddJob(Job.Default.WithRuntime(CoreRuntime.Core10_0));
+    }
+}
 
-        AddJob(baseJob.WithNuGet("DMISharp", "2.0.2").AsBaseline());
-        AddJob(baseJob);
+internal sealed class Net8And10BenchmarkConfig : ManualConfig
+{
+    public Net8And10BenchmarkConfig()
+    {
+        AddJob(Job.Default
+            .WithRuntime(CoreRuntime.Core80)
+            .WithWarmupCount(3)
+            .WithIterationCount(5)
+            .AsBaseline());
+        AddJob(Job.Default
+            .WithRuntime(CoreRuntime.Core10_0)
+            .WithWarmupCount(3)
+            .WithIterationCount(5));
     }
 }
 
@@ -61,11 +75,8 @@ public class DMIBenchmarks
     {
         public DMIBenchmarkConfig()
         {
-            var baseJob = Job.Default;
-            
-            AddJob(baseJob.WithNuGet("DMISharp", "2.0.2").WithRuntime(CoreRuntime.Core70).AsBaseline());
-            AddJob(baseJob.WithRuntime(CoreRuntime.Core70));
-            AddJob(baseJob.WithRuntime(CoreRuntime.Core80));
+            AddJob(Job.Default.WithRuntime(CoreRuntime.Core80).AsBaseline());
+            AddJob(Job.Default.WithRuntime(CoreRuntime.Core10_0));
         }
     }
     

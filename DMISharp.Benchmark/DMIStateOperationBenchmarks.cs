@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -10,7 +9,7 @@ using SixLabors.ImageSharp.PixelFormats;
 namespace DMISharp.Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 public class ImportStatesBenchmarks
 {
     private DMIFile _destination = null!;
@@ -43,7 +42,7 @@ public class ImportStatesBenchmarks
 }
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 public class StateCollectionBenchmarks
 {
     private DMIFile _file = null!;
@@ -63,7 +62,7 @@ public class StateCollectionBenchmarks
 }
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 public class StateReadinessBenchmarks
 {
     private DMIState _state = null!;
@@ -98,7 +97,7 @@ public class StateReadinessBenchmarks
 }
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 public class StateDisposalBenchmarks
 {
     private DMIState _state = null!;
