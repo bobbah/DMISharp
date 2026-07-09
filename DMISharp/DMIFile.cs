@@ -47,12 +47,9 @@ public sealed class DMIFile : IDisposable, IExportable
             throw new ArgumentNullException(nameof(stream));
         }
 
-        // As the metadata is embedded in the PNG file, extract into a usable object.
-        Metadata = new DMIMetadata(stream);
-
-        // Reset stream position for processing image data.
-        stream.Seek(0, SeekOrigin.Begin);
-        _states = GetStates(stream).ToList();
+        using var atlas = new DMIImageAtlas(Image.Load<Rgba32>(stream));
+        Metadata = new DMIMetadata(atlas.TextData);
+        _states = GetStates(atlas);
 
         stream.Dispose();
     }
@@ -303,13 +300,12 @@ public sealed class DMIFile : IDisposable, IExportable
     /// <summary>
     /// Processes DMI metadata into DMI State objects.
     /// </summary>
-    /// <param name="source">The stream containing the DMI file data.</param>
-    /// <returns>An enumerable collection of DMI State objects representing the states of the DMI File.</returns>
-    private IEnumerable<DMIState> GetStates(Stream source)
+    /// <param name="atlas">The decoded DMI atlas.</param>
+    /// <returns>A collection of DMI State objects representing the states of the DMI File.</returns>
+    private List<DMIState> GetStates(DMIImageAtlas atlas)
     {
         var states = new List<DMIState>();
 
-        using var img = Image.Load<Rgba32>(source);
         // DMI data did not include widths or heights, assume that it is then
         // perfect squares, thus we will determine the w/h programatically...
         if (Metadata.FrameWidth == -1 || Metadata.FrameHeight == -1)
@@ -318,10 +314,10 @@ public sealed class DMIFile : IDisposable, IExportable
 
             for (var rows = 1; totalFrames >= rows; rows++)
             {
-                if (img.Width / (totalFrames / rows) == img.Height / rows)
+                if (atlas.Width / (totalFrames / rows) == atlas.Height / rows)
                 {
-                    Metadata.FrameHeight = img.Height / rows;
-                    Metadata.FrameWidth = img.Width / (totalFrames / rows);
+                    Metadata.FrameHeight = atlas.Height / rows;
+                    Metadata.FrameWidth = atlas.Width / (totalFrames / rows);
                     break;
                 }
             }
@@ -332,20 +328,28 @@ public sealed class DMIFile : IDisposable, IExportable
             return states;
         }
 
-        var wFrames = img.Width / Metadata.FrameWidth;
-        var hFrames = img.Height / Metadata.FrameHeight;
+        var wFrames = atlas.Width / Metadata.FrameWidth;
+        var hFrames = atlas.Height / Metadata.FrameHeight;
         var processedImages = 0;
-        var currWIndex = 0;
-        var currHIndex = 0;
 
-        foreach (var state in Metadata.States)
+        try
         {
-            var toAdd = new DMIState(state, img, currWIndex, wFrames, currHIndex, hFrames, Metadata.FrameWidth,
-                Metadata.FrameHeight);
-            processedImages += toAdd.TotalFrames;
-            currHIndex = processedImages / wFrames;
-            currWIndex = processedImages % wFrames;
-            states.Add(toAdd);
+            foreach (var state in Metadata.States)
+            {
+                var toAdd = new DMIState(state, atlas, processedImages, wFrames, hFrames, Metadata.FrameWidth,
+                    Metadata.FrameHeight);
+                processedImages += toAdd.TotalFrames;
+                states.Add(toAdd);
+            }
+        }
+        catch
+        {
+            foreach (var state in states)
+            {
+                state.Dispose();
+            }
+
+            throw;
         }
 
         return states;

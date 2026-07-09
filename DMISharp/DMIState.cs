@@ -86,6 +86,11 @@ public enum DirectionDepth
 public sealed class DMIState : IDisposable
 {
     private Image<Rgba32>?[][] _images; // Stores each frame image following the [direction][frame] pattern.
+    private int[][] _atlasIndices;
+    private DMIImageAtlas? _atlas;
+    private int _atlasFramesPerRow;
+    private int _unmaterializedFrameCount;
+    private readonly object _materializationLock = new();
     private bool _disposed;
     
     /// <summary>
@@ -101,12 +106,14 @@ public sealed class DMIState : IDisposable
         Data = new StateMetadata(name, directionDepth, frames);
         DirectionDepth = directionDepth;
         _images = new Image<Rgba32>[(int)directionDepth][];
+        _atlasIndices = new int[(int)directionDepth][];
         Width = frameWidth;
         Height = frameHeight;
 
         for (var dir = 0; dir < Dirs; dir++)
         {
             _images[dir] = new Image<Rgba32>[Frames];
+            _atlasIndices[dir] = CreateEmptyAtlasIndices(Frames);
         }
     }
 
@@ -136,9 +143,48 @@ public sealed class DMIState : IDisposable
 
         // Develop frames
         _images = SeperateImages(source, currWIndex, wIndex, currHIndex, hIndex, width, height);
+        _atlasIndices = new int[Dirs][];
+        for (var dir = 0; dir < Dirs; dir++)
+        {
+            _atlasIndices[dir] = CreateEmptyAtlasIndices(Frames);
+        }
 
         // Set directionality
         DirectionDepth = (DirectionDepth)_images.Length;
+    }
+
+    internal DMIState(StateMetadata state, DMIImageAtlas atlas, int startIndex, int wIndex, int hIndex, int width,
+        int height)
+    {
+        Data = state ?? throw new ArgumentNullException(nameof(state));
+        Height = height;
+        Width = width;
+        DirectionDepth = (DirectionDepth)Dirs;
+        _images = new Image<Rgba32>[Dirs][];
+        _atlasIndices = new int[Dirs][];
+        _atlasFramesPerRow = wIndex;
+
+        var atlasCapacity = wIndex * hIndex;
+        var sourceIndex = startIndex;
+        for (var dir = 0; dir < Dirs; dir++)
+        {
+            _images[dir] = new Image<Rgba32>[Frames];
+            _atlasIndices[dir] = CreateEmptyAtlasIndices(Frames);
+        }
+
+        for (var frame = 0; frame < Frames; frame++)
+        {
+            for (var dir = 0; dir < Dirs && sourceIndex < atlasCapacity; dir++, sourceIndex++)
+            {
+                _atlasIndices[dir][frame] = sourceIndex;
+                _unmaterializedFrameCount++;
+            }
+        }
+
+        if (_unmaterializedFrameCount > 0)
+        {
+            _atlas = atlas.AddReference();
+        }
     }
 
     /// <summary>
@@ -173,7 +219,25 @@ public sealed class DMIState : IDisposable
     /// <summary>
     /// The total number of frames in this state.
     /// </summary>
-    public int TotalFrames => _images.Sum(x => x.Count(y => y != null));
+    public int TotalFrames
+    {
+        get
+        {
+            var total = 0;
+            for (var direction = 0; direction < _images.Length; direction++)
+            {
+                for (var frame = 0; frame < _images[direction].Length; frame++)
+                {
+                    if (_images[direction][frame] != null || _atlasIndices[direction][frame] >= 0)
+                    {
+                        total++;
+                    }
+                }
+            }
+
+            return total;
+        }
+    }
 
     /// <summary>
     /// The total possible number of frames in this state.
@@ -195,18 +259,25 @@ public sealed class DMIState : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
-        foreach (var image in _images.SelectMany(x => x).Where(x => x != null))
+        lock (_materializationLock)
         {
-            image!.Dispose();
+            if (_disposed)
+                return;
+
+            foreach (var image in _images.SelectMany(x => x).Where(x => x != null))
+            {
+                image!.Dispose();
+            }
+        
+            // Empty the array of images to remove all references
+            _images = Array.Empty<Image<Rgba32>[]>();
+            _atlasIndices = Array.Empty<int[]>();
+            _atlas?.Dispose();
+            _atlas = null;
+            _unmaterializedFrameCount = 0;
+        
+            _disposed = true;
         }
-        
-        // Empty the array of images to remove all references
-        _images = Array.Empty<Image<Rgba32>[]>();
-        
-        _disposed = true;
     }
 
     /// <summary>
@@ -328,7 +399,7 @@ public sealed class DMIState : IDisposable
         var toReturn = new Image<Rgba32>(Width, Height);
         for (var frame = 0; frame < Frames; frame++)
         {
-            var cursor = _images[(int)direction][frame];
+            var cursor = GetFrame(direction, frame);
             if (cursor != null)
             {
                 var metadata = cursor.Frames.RootFrame.Metadata.GetFormatMetadata(GifFormat.Instance);
@@ -383,7 +454,32 @@ public sealed class DMIState : IDisposable
     /// <param name="direction">The direction of the frame</param>
     /// <param name="frame">The frame index</param>
     /// <returns>An ImageSharp Image representing the frame</returns>
-    public Image<Rgba32>? GetFrame(StateDirection direction, int frame) => _images[(int)direction][frame];
+    public Image<Rgba32>? GetFrame(StateDirection direction, int frame)
+    {
+        var directionIndex = (int)direction;
+        var image = _images[directionIndex][frame];
+        var sourceIndex = _atlasIndices[directionIndex][frame];
+        if (image != null || sourceIndex < 0)
+        {
+            return image;
+        }
+
+        lock (_materializationLock)
+        {
+            image = _images[directionIndex][frame];
+            sourceIndex = _atlasIndices[directionIndex][frame];
+            if (image != null || sourceIndex < 0)
+            {
+                return image;
+            }
+
+            image = _atlas!.ExtractFrame(sourceIndex, _atlasFramesPerRow, Width, Height);
+            _images[directionIndex][frame] = image;
+            _atlasIndices[directionIndex][frame] = -1;
+            ReleaseMaterializedAtlasFrame();
+            return image;
+        }
+    }
 
     /// <summary>
     /// Helper for frame retrieval, defaults to the North (1) direction
@@ -400,20 +496,24 @@ public sealed class DMIState : IDisposable
     /// <param name="frame">The frame index</param>
     public void SetFrame(Image<Rgba32> newFrame, StateDirection direction, int frame)
     {
-        if (newFrame != null && (newFrame.Width != Width || newFrame.Height != Height))
+        lock (_materializationLock)
         {
-            throw new ArgumentException(
-                "Cannot insert a frame that is different than the size of the state's frame size.");
-        }
+            if (newFrame != null && (newFrame.Width != Width || newFrame.Height != Height))
+            {
+                throw new ArgumentException(
+                    "Cannot insert a frame that is different than the size of the state's frame size.");
+            }
 
-        // Delete old frame if necessary
-        var cursor = _images[(int)direction][frame];
-        if (cursor != null && cursor != newFrame)
-        {
-            cursor.Dispose();
-        }
+            // Delete old frame if necessary
+            var cursor = _images[(int)direction][frame];
+            if (cursor != null && cursor != newFrame)
+            {
+                cursor.Dispose();
+            }
 
-        _images[(int)direction][frame] = newFrame;
+            ReleaseAtlasFrame(direction, frame);
+            _images[(int)direction][frame] = newFrame;
+        }
     }
 
     /// <summary>
@@ -433,9 +533,13 @@ public sealed class DMIState : IDisposable
     /// <param name="frame">The frame index</param>
     public void DeleteFrame(StateDirection direction, int frame)
     {
-        // Ensure image is disposed
-        _images[(int)direction][frame]?.Dispose();
-        _images[(int)direction][frame] = null;
+        lock (_materializationLock)
+        {
+            // Ensure image is disposed
+            _images[(int)direction][frame]?.Dispose();
+            _images[(int)direction][frame] = null;
+            ReleaseAtlasFrame(direction, frame);
+        }
     }
 
     /// <summary>
@@ -453,41 +557,49 @@ public sealed class DMIState : IDisposable
     /// <param name="depth">The new directional depth for the state</param>
     public void SetDirectionDepth(DirectionDepth depth)
     {
-        if (depth == DirectionDepth)
-            return;
-
-        var minDepth = Math.Min((int)depth, (int)DirectionDepth);
-        var temp = new Image<Rgba32>?[(int)depth][];
-        for (var i = 0; i < minDepth; i++)
+        lock (_materializationLock)
         {
-            temp[i] = _images[i];
-        }
+            if (depth == DirectionDepth)
+                return;
 
-        // Dispose of images outside of our new dirs
-        if (depth < DirectionDepth)
-        {
-            for (var i = (int)depth; i < (int)DirectionDepth; i++)
+            var minDepth = Math.Min((int)depth, (int)DirectionDepth);
+            var temp = new Image<Rgba32>?[(int)depth][];
+            var tempAtlasIndices = new int[(int)depth][];
+            for (var i = 0; i < minDepth; i++)
             {
-                for (var j = 0; j < Frames; j++)
+                temp[i] = _images[i];
+                tempAtlasIndices[i] = _atlasIndices[i];
+            }
+
+            // Dispose of images outside of our new dirs
+            if (depth < DirectionDepth)
+            {
+                for (var i = (int)depth; i < (int)DirectionDepth; i++)
                 {
-                    var cursor = _images[i][j];
-                    cursor?.Dispose();
+                    for (var j = 0; j < Frames; j++)
+                    {
+                        var cursor = _images[i][j];
+                        cursor?.Dispose();
+                        ReleaseAtlasFrame((StateDirection)i, j);
+                    }
                 }
             }
-        }
 
-        // Insert empty arrays for extra new dirs if available
-        if (depth > DirectionDepth)
-        {
-            for (var i = (int)DirectionDepth; i < (int)depth; i++)
+            // Insert empty arrays for extra new dirs if available
+            if (depth > DirectionDepth)
             {
-                temp[i] = new Image<Rgba32>[Frames];
+                for (var i = (int)DirectionDepth; i < (int)depth; i++)
+                {
+                    temp[i] = new Image<Rgba32>[Frames];
+                    tempAtlasIndices[i] = CreateEmptyAtlasIndices(Frames);
+                }
             }
-        }
 
-        _images = temp;
-        DirectionDepth = depth;
-        Data.Dirs = (int)depth;
+            _images = temp;
+            _atlasIndices = tempAtlasIndices;
+            DirectionDepth = depth;
+            Data.Dirs = (int)depth;
+        }
     }
 
     /// <summary>
@@ -496,32 +608,70 @@ public sealed class DMIState : IDisposable
     /// <param name="frames">The new frame depth of the state</param>
     public void SetFrameCount(int frames)
     {
-        if (Frames == frames)
-            return;
-
-        var temp = new Image<Rgba32>?[Dirs][];
-        var minFrames = Math.Min(Frames, frames);
-
-        for (var dir = 0; dir < Dirs; dir++)
+        lock (_materializationLock)
         {
-            temp[dir] = new Image<Rgba32>?[frames];
-            for (var i = 0; i < minFrames; i++)
+            if (Frames == frames)
+                return;
+
+            var temp = new Image<Rgba32>?[Dirs][];
+            var tempAtlasIndices = new int[Dirs][];
+            var minFrames = Math.Min(Frames, frames);
+
+            for (var dir = 0; dir < Dirs; dir++)
             {
-                temp[dir][i] = _images[dir][i];
+                temp[dir] = new Image<Rgba32>?[frames];
+                tempAtlasIndices[dir] = CreateEmptyAtlasIndices(frames);
+                for (var i = 0; i < minFrames; i++)
+                {
+                    temp[dir][i] = _images[dir][i];
+                    tempAtlasIndices[dir][i] = _atlasIndices[dir][i];
+                }
+
+                // Dispose of frames that we are no longer tracking ("lost" frames)
+                if (frames >= Frames)
+                    continue;
+
+                for (var i = minFrames; i < Frames; i++)
+                {
+                    _images[dir][i]?.Dispose();
+                    ReleaseAtlasFrame((StateDirection)dir, i);
+                }
             }
 
-            // Dispose of frames that we are no longer tracking ("lost" frames)
-            if (frames >= Frames)
-                continue;
+            _images = temp;
+            _atlasIndices = tempAtlasIndices;
+            Data.Frames = frames;
+        }
+    }
 
-            for (var i = minFrames; i < Frames; i++)
-            {
-                _images[dir][i]?.Dispose();
-            }
+    private static int[] CreateEmptyAtlasIndices(int length)
+    {
+        var indices = new int[length];
+        Array.Fill(indices, -1);
+        return indices;
+    }
+
+    private void ReleaseAtlasFrame(StateDirection direction, int frame)
+    {
+        if (_atlasIndices[(int)direction][frame] < 0)
+        {
+            return;
         }
 
-        _images = temp;
-        Data.Frames = frames;
+        _atlasIndices[(int)direction][frame] = -1;
+        ReleaseMaterializedAtlasFrame();
+    }
+
+    private void ReleaseMaterializedAtlasFrame()
+    {
+        _unmaterializedFrameCount--;
+        if (_unmaterializedFrameCount != 0)
+        {
+            return;
+        }
+
+        _atlas?.Dispose();
+        _atlas = null;
     }
 
     /// <summary>

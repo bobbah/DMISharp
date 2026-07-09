@@ -8,6 +8,51 @@ using BenchmarkDotNet.Jobs;
 
 namespace DMISharp.Benchmark;
 
+[MemoryDiagnoser, Config(typeof(DMIReadBenchmarkConfig))]
+public class DMIReadBenchmarks
+{
+    private string _path = null!;
+
+    [Params("small.dmi", "large.dmi", "352x352.dmi")]
+    public string FileName { get; set; } = null!;
+
+    [GlobalSetup]
+    public void Setup() => _path = Path.Combine("Data", "Input", FileName);
+
+    [Benchmark]
+    public void ReadDMIFile()
+    {
+        using var file = new DMIFile(_path);
+    }
+
+    [Benchmark]
+    public void ReadAndMaterializeAllFrames()
+    {
+        using var file = new DMIFile(_path);
+        foreach (var state in file.States)
+        {
+            for (var frame = 0; frame < state.Frames; frame++)
+            {
+                for (var direction = 0; direction < state.Dirs; direction++)
+                {
+                    _ = state.GetFrame((StateDirection)direction, frame);
+                }
+            }
+        }
+    }
+}
+
+internal sealed class DMIReadBenchmarkConfig : ManualConfig
+{
+    public DMIReadBenchmarkConfig()
+    {
+        var baseJob = Job.Default.WithRuntime(CoreRuntime.Core80);
+
+        AddJob(baseJob.WithNuGet("DMISharp", "2.0.2").AsBaseline());
+        AddJob(baseJob);
+    }
+}
+
 [MemoryDiagnoser, Config(typeof(DMIBenchmarkConfig))]
 [SuppressMessage("Performance", "CA1822:Mark members as static")]
 public class DMIBenchmarks
