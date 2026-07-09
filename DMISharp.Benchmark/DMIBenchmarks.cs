@@ -31,10 +31,12 @@ public class DMIBenchmarks
     public DMIFile ReadLargeDMIFile() => new("Data/Input/large.dmi");
 
     [Benchmark]
-    public void WriteDMIFile()
+    [Arguments("small.dmi")]
+    [Arguments("air_meter.dmi")]
+    public void WritePaletteDMIFile(string fileName)
     {
         using var ms = new MemoryStream();
-        using var file = new DMIFile(@"Data/Input/air_meter.dmi");
+        using var file = new DMIFile(Path.Combine("Data", "Input", fileName));
         file.Save(ms);
     }
 
