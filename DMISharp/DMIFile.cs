@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -85,27 +84,9 @@ public sealed class DMIFile : IDisposable, IExportable
     {
         if (dataStream == null) throw new ArgumentNullException(nameof(dataStream), "Target stream cannot be null!");
 
-        // prepare frames
-        var frames = new List<Image<Rgba32>>();
-        foreach (var state in States)
-        {
-            for (var frame = 0; frame < state.Frames; frame++)
-            {
-                for (var dir = 0; dir < state.Dirs; dir++)
-                {
-                    var foundFrame = state.GetFrame((StateDirection)dir, frame);
-                    if (foundFrame != null)
-                        frames.Add(foundFrame);
-                    else
-                        throw new InvalidOperationException(
-                            $"Failed to get frame for state: {dir} frame {frame} is null");
-                }
-            }
-        }
-
         // Get dimensions in frames using the same logic that BYOND does internally (adapted from byondcore.dll)
         // (more specifically from iconToPixels)
-        var numFrames = frames.Count;
+        var numFrames = States.Sum(state => state.Frames * state.Dirs);
         var xRatio = Math.Sqrt((double)Metadata.FrameHeight * numFrames / Metadata.FrameWidth);
         var yRatio = Math.Sqrt((double)Metadata.FrameWidth * numFrames / Metadata.FrameHeight);
 
@@ -130,62 +111,69 @@ public sealed class DMIFile : IDisposable, IExportable
         var xFrames = (int)(xRatio + 0.5);
         var yFrames = (int)(intermediateY2 + 0.5);
 
+        // Build the atlas and analyze its colors in one pass.
+        var hasTransparency = false;
+        var pristineGreyscale = true;
+        var colors = new HashSet<uint>();
+        var paletteCompatible = true;
+        var transparent = Color.Transparent;
         using var img = new Image<Rgba32>(xFrames * Metadata.FrameWidth, yFrames * Metadata.FrameHeight);
-        for (int y = 0, i = 0; y < yFrames && i < numFrames; y++)
+        var frameIndex = 0;
+        foreach (var state in States)
         {
-            for (var x = 0; x < xFrames && i < numFrames; x++, i++)
+            for (var frame = 0; frame < state.Frames; frame++)
             {
-                var targetFrame = frames[i];
-                var yCap = y; // For closure
-                var xCap = x; // For closure
-                img.ProcessPixelRows(targetFrame, (imgAccessor, targetAccessor) =>
+                for (var dir = 0; dir < state.Dirs; dir++)
                 {
-                    for (var ypx = 0; ypx < Metadata.FrameHeight; ypx++)
+                    var sourceFrame = state.GetFrame((StateDirection)dir, frame);
+                    if (sourceFrame == null)
+                        throw new InvalidOperationException(
+                            $"Failed to get frame for state: {dir} frame {frame} is null");
+
+                    var atlasX = frameIndex % xFrames * Metadata.FrameWidth;
+                    var atlasY = frameIndex / xFrames * Metadata.FrameHeight;
+                    img.ProcessPixelRows(sourceFrame, (imgAccessor, sourceAccessor) =>
                     {
-                        var sourceSpan = targetAccessor.GetRowSpan(ypx);
-                        var destSpan = imgAccessor.GetRowSpan(ypx + yCap * Metadata.FrameHeight);
-                        sourceSpan.CopyTo(destSpan.Slice(xCap * Metadata.FrameWidth, Metadata.FrameWidth));
-                    }
-                });
+                        for (var ypx = 0; ypx < Metadata.FrameHeight; ypx++)
+                        {
+                            var sourceSpan = sourceAccessor.GetRowSpan(ypx);
+                            var destSpan = imgAccessor.GetRowSpan(ypx + atlasY)
+                                .Slice(atlasX, Metadata.FrameWidth);
+                            sourceSpan.CopyTo(destSpan);
+
+                            for (var xpx = 0; xpx < destSpan.Length; xpx++)
+                            {
+                                ref var pixel = ref destSpan[xpx];
+
+                                if (!hasTransparency && pixel.A < byte.MaxValue)
+                                    hasTransparency = true;
+
+                                if (pixel.A == 0)
+                                    pixel.FromRgba32(transparent);
+
+                                if (pristineGreyscale && !(pixel.R == pixel.G && pixel.G == pixel.B))
+                                    pristineGreyscale = false;
+
+                                if (paletteCompatible && colors.Add(pixel.PackedValue) && colors.Count > 256)
+                                    paletteCompatible = false;
+                            }
+                        }
+                    });
+                    frameIndex++;
+                }
             }
+        }
+
+        // BYOND's layout can leave unused atlas cells, which remain transparent black.
+        if (frameIndex < xFrames * yFrames)
+        {
+            hasTransparency = true;
+            if (paletteCompatible && colors.Add(default(Rgba32).PackedValue) && colors.Count > 256)
+                paletteCompatible = false;
         }
 
         var md = img.Metadata.GetFormatMetadata(PngFormat.Instance);
         md.TextData.Add(new PngTextData("Description", GetTextChunk(), string.Empty, string.Empty));
-
-        // Perform some brief analysis to determine optimal color type for saving
-        var hasTransparency = false;
-        var pristineGreyscale = true;
-        var colors = new HashSet<uint>();
-        var transparent = Color.Transparent;
-        var height = img.Height;
-        var width = img.Width;
-        img.ProcessPixelRows(accessor =>
-        {
-            for (var ypx = 0; ypx < height; ypx++)
-            {
-                var row = accessor.GetRowSpan(ypx);
-                for (var xpx = 0; xpx < width; xpx++)
-                {
-                    ref var pixel = ref row[xpx];
-
-                    // Check for transparency, if we ultimately don't have any we can remove the alpha layer
-                    if (!hasTransparency && pixel.A < byte.MaxValue)
-                        hasTransparency = true;
-
-                    // Set color to be transparent black if fully transparent
-                    if (pixel.A == 0)
-                        pixel.FromRgba32(transparent);
-
-                    // Check for greyscale pristine-ness
-                    if (pristineGreyscale && !(pixel.R == pixel.G && pixel.G == pixel.B))
-                        pristineGreyscale = false;
-
-                    // Count distinct colors to determine best approach with palette
-                    colors.Add(pixel.PackedValue);
-                }
-            }
-        });
 
         // Determine color type
         PngColorType? colorType = null;
@@ -211,14 +199,13 @@ public sealed class DMIFile : IDisposable, IExportable
         };
 
         // If there is no possibility of a color palette we can return at this point
-        if (colors.Count > 256)
+        if (!paletteCompatible)
         {
             img.SaveAsPng(dataStream, pngEncoder);
             return;
         }
 
         // We can use a color palette
-        var colorSpan = colors.ToImmutableArray().AsSpan();
         var paletteEncoder = new PngEncoder()
         {
             InterlaceMethod = pngEncoder.InterlaceMethod,
@@ -230,17 +217,48 @@ public sealed class DMIFile : IDisposable, IExportable
             ColorType = PngColorType.Palette,
             Quantizer = new NoFrillsQuantizer(colors.Select(x => new Color(new Rgba32(x))).ToArray(),
                 new QuantizerOptions() { Dither = null }),
-            BitDepth = GetBitDepth(colorSpan)
+            BitDepth = GetBitDepth(colors.Count)
         };
 
-        // Test to see if the default saving or palette is smaller, then use the smallest of the two
+        // Appending to a resizable stream lets the palette candidate be written directly. If the normal
+        // candidate is smaller, it safely replaces the appended bytes without touching existing data.
+        if (dataStream is MemoryStream or FileStream
+            && dataStream.Position == dataStream.Length)
+        {
+            var outputStart = dataStream.Position;
+            try
+            {
+                img.SaveAsPng(dataStream, paletteEncoder);
+                var paletteLength = dataStream.Position - outputStart;
+
+                using var normalMs = new MemoryStream();
+                img.SaveAsPng(normalMs, pngEncoder);
+                if (normalMs.Length <= paletteLength)
+                {
+                    dataStream.Position = outputStart;
+                    normalMs.Position = 0;
+                    normalMs.CopyTo(dataStream);
+                    dataStream.SetLength(dataStream.Position);
+                }
+            }
+            catch
+            {
+                dataStream.SetLength(outputStart);
+                dataStream.Position = outputStart;
+                throw;
+            }
+
+            return;
+        }
+
+        // Preserve overwrite and non-seekable stream behavior by buffering both candidates.
         using var paletteMs = new MemoryStream();
-        using var normalMs = new MemoryStream();
+        using var bufferedNormalMs = new MemoryStream();
 
         img.SaveAsPng(paletteMs, paletteEncoder);
-        img.SaveAsPng(normalMs, pngEncoder);
+        img.SaveAsPng(bufferedNormalMs, pngEncoder);
 
-        var smallest = paletteMs.Length < normalMs.Length ? paletteMs : normalMs;
+        var smallest = paletteMs.Length < bufferedNormalMs.Length ? paletteMs : bufferedNormalMs;
         smallest.Seek(0, SeekOrigin.Begin);
         smallest.CopyTo(dataStream);
     }
@@ -453,9 +471,9 @@ public sealed class DMIFile : IDisposable, IExportable
         toCheck.Height == Metadata.FrameHeight
         && toCheck.Width == Metadata.FrameWidth;
 
-    private static PngBitDepth GetBitDepth(ReadOnlySpan<uint> colors)
+    private static PngBitDepth GetBitDepth(int colorCount)
     {
-        return colors.Length switch
+        return colorCount switch
         {
             <= 2 => PngBitDepth.Bit1,
             <= 4 => PngBitDepth.Bit2,
