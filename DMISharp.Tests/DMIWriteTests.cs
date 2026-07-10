@@ -3,16 +3,18 @@ using System.Linq;
 using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
+using System.Threading.Tasks;
+using TUnit.Assertions.Enums;
 
 namespace DMISharp.Tests;
 
-public class DMIWriteTests
+[NotInParallel]
+internal sealed class DMIWriteTests
 {
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SaveProducesIdenticalOutputAcrossStreamCapabilities(bool trueColor)
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task SaveProducesIdenticalOutputAcrossStreamCapabilities(bool trueColor)
     {
         using var file = CreateSyntheticFile(trueColor);
         using var expectedStream = new MemoryStream();
@@ -23,42 +25,46 @@ public class DMIWriteTests
         using var appendStream = new MemoryStream();
         appendStream.Write(prefix);
         file.Save(appendStream);
-        Assert.Equal(prefix.Concat(expected), appendStream.ToArray());
+        await Assert.That(appendStream.ToArray())
+            .IsEquivalentTo(prefix.Concat(expected), CollectionOrdering.Matching);
 
         using var nonSeekableOutput = new MemoryStream();
         using (var nonSeekableStream = new NonSeekableWriteStream(nonSeekableOutput))
             file.Save(nonSeekableStream);
-        Assert.Equal(expected, nonSeekableOutput.ToArray());
+        await Assert.That(nonSeekableOutput.ToArray())
+            .IsEquivalentTo(expected, CollectionOrdering.Matching);
 
         var overwriteBuffer = Enumerable.Repeat((byte)0xA5, expected.Length + 64).ToArray();
         using var overwriteStream = new MemoryStream(overwriteBuffer, writable: true);
         file.Save(overwriteStream);
-        Assert.Equal(expected, overwriteBuffer.Take(expected.Length));
-        Assert.All(overwriteBuffer.Skip(expected.Length), value => Assert.Equal(0xA5, value));
+        await Assert.That(overwriteBuffer.Take(expected.Length))
+            .IsEquivalentTo(expected, CollectionOrdering.Matching);
+        foreach (var value in overwriteBuffer.Skip(expected.Length))
+            await Assert.That(value).IsEqualTo((byte)0xA5);
     }
 
-    [Fact]
-    public void SaveKeepsUnusedAtlasCellsTransparent()
+    [Test]
+    public async Task SaveKeepsUnusedAtlasCellsTransparent()
     {
         using var file = CreateSyntheticFile(false, 3);
         using var output = new MemoryStream();
         file.Save(output);
         output.Position = 0;
 
-        using var image = Image.Load<Rgba32>(output);
-        Assert.Equal(34, image.Width);
-        Assert.Equal(34, image.Height);
-        Assert.Equal(0, image[33, 33].A);
+        using var image = await Image.LoadAsync<Rgba32>(output).ConfigureAwait(false);
+        await Assert.That(image.Width).IsEqualTo(34);
+        await Assert.That(image.Height).IsEqualTo(34);
+        await Assert.That(image[33, 33].A).IsEqualTo((byte)0);
     }
 
-    [Fact]
+    [Test]
     public void CanWriteDMIFile()
     {
         using var file = new DMIFile(@"Data/Input/air_meter.dmi");
         file.Save(@"Data/Output/air_meter_temp.dmi");
     }
 
-    [Fact]
+    [Test]
     public void CanSortDMIFile()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
@@ -66,7 +72,22 @@ public class DMIWriteTests
         file.Save(@"Data/Output/animal_sorted_alphabetically.dmi");
     }
 
-    [Fact]
+    [Test]
+    [Arguments("air_meter.dmi", false, 481)]
+    [Arguments("animal.dmi", true, 136490)]
+    public async Task SavePreservesCompressionOutputSize(string fileName, bool sort, long expectedLength)
+    {
+        using var output = new MemoryStream();
+        using var file = new DMIFile(Path.Combine("Data", "Input", fileName));
+        if (sort)
+            file.SortStates();
+
+        file.Save(output);
+
+        await Assert.That(output.Length).IsEqualTo(expectedLength);
+    }
+
+    [Test]
     public void CanWriteAnimations()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
@@ -82,7 +103,7 @@ public class DMIWriteTests
     /// <summary>
     /// Tests if gif frames are accidentally disposed after creating animation
     /// </summary>
-    [Fact]
+    [Test]
     public void AnimationConstructDoesNotDisposeFrames()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
@@ -101,7 +122,7 @@ public class DMIWriteTests
         }
     }
 
-    [Fact]
+    [Test]
     public void AnimationOfBarsignsConstructsCorrectly()
     {
         using var fs = File.OpenWrite(@"Data/Output/thegreytide.gif");
@@ -110,7 +131,7 @@ public class DMIWriteTests
         toTest.SaveAnimatedGIF(fs, StateDirection.South);
     }
 
-    [Fact]
+    [Test]
     public void AnimationOfSingularityConstructsCorrectly()
     {
         using var fs = File.OpenWrite(@"Data/Output/singularity_s11.gif");
@@ -119,43 +140,43 @@ public class DMIWriteTests
         toTest.SaveAnimatedGIF(fs, StateDirection.South);
     }
 
-    [Theory]
-    [InlineData(@"Data/Input/broadMobs.dmi", @"Data/Output/broadMobs.dmi")]
-    public void ResavingFileMatchesOriginalMetadata(string inputPath, string outputPath)
+    [Test]
+    [Arguments(@"Data/Input/broadMobs.dmi", @"Data/Output/broadMobs.dmi")]
+    public async Task ResavingFileMatchesOriginalMetadata(string inputPath, string outputPath)
     {
         if (File.Exists(outputPath))
             File.Delete(outputPath);
-            
+
         using (var fs = File.OpenWrite(outputPath))
         using (var originalFile = new DMIFile(inputPath))
             originalFile.Save(fs);
-            
+
         // Check metadata is equal
         using var oldFile = File.OpenRead(inputPath);
         using var newFile = File.OpenRead(outputPath);
-        Assert.Equal(DMIMetadata.GetDMIMetadata(oldFile).ToString(), DMIMetadata.GetDMIMetadata(newFile).ToString());
+        await Assert.That(DMIMetadata.GetDMIMetadata(newFile).ToString()).IsEqualTo(DMIMetadata.GetDMIMetadata(oldFile).ToString());
     }
-        
-    [Theory]
-    [InlineData(@"Data/Input/broadMobs.dmi", @"Data/Output/broadMobs.dmi")]
-    public void ResavingFileMatchesOriginalImageRectSprites(string inputPath, string outputPath)
+
+    [Test]
+    [Arguments(@"Data/Input/broadMobs.dmi", @"Data/Output/broadMobs.dmi")]
+    public async Task ResavingFileMatchesOriginalImageRectSprites(string inputPath, string outputPath)
     {
         if (File.Exists(outputPath))
             File.Delete(outputPath);
-            
+
         using (var fs = File.OpenWrite(outputPath))
         using (var originalFile = new DMIFile(inputPath))
             originalFile.Save(fs);
-            
+
         // Check image is equal
         var pixelDiffs = 0;
-        using var oldFile = Image.Load<Rgba32>(inputPath);
-        using var newFile = Image.Load<Rgba32>(outputPath);
-        
+        using var oldFile = await Image.LoadAsync<Rgba32>(inputPath).ConfigureAwait(false);
+        using var newFile = await Image.LoadAsync<Rgba32>(outputPath).ConfigureAwait(false);
+
         // Check overall dimensions
-        Assert.Equal(oldFile.Width, newFile.Width);
-        Assert.Equal(oldFile.Height, newFile.Height);
-                
+        await Assert.That(newFile.Width).IsEqualTo(oldFile.Width);
+        await Assert.That(newFile.Height).IsEqualTo(oldFile.Height);
+
         // Check pixel content
         var height = oldFile.Height;
         var width = oldFile.Width;
@@ -173,29 +194,29 @@ public class DMIWriteTests
             }
         });
 
-        Assert.Equal(0, pixelDiffs);
+        await Assert.That(pixelDiffs).IsEqualTo(0);
     }
-        
-    [Theory]
-    [InlineData(@"Data/Input/animal.dmi", @"Data/Output/animal.dmi")]
-    public void ResavingFileMatchesOriginalImageSquareSprites(string inputPath, string outputPath)
+
+    [Test]
+    [Arguments(@"Data/Input/animal.dmi", @"Data/Output/animal.dmi")]
+    public async Task ResavingFileMatchesOriginalImageSquareSprites(string inputPath, string outputPath)
     {
         if (File.Exists(outputPath))
             File.Delete(outputPath);
-            
+
         using (var fs = File.OpenWrite(outputPath))
         using (var originalFile = new DMIFile(inputPath))
             originalFile.Save(fs);
-            
+
         // Check image is equal
         var pixelDiffs = 0;
-        using var oldFile = Image.Load<Rgba32>(inputPath);
-        using var newFile = Image.Load<Rgba32>(outputPath);
-        
+        using var oldFile = await Image.LoadAsync<Rgba32>(inputPath).ConfigureAwait(false);
+        using var newFile = await Image.LoadAsync<Rgba32>(outputPath).ConfigureAwait(false);
+
         // Check overall dimensions
-        Assert.Equal(oldFile.Width, newFile.Width);
-        Assert.Equal(oldFile.Height, newFile.Height);
-                
+        await Assert.That(newFile.Width).IsEqualTo(oldFile.Width);
+        await Assert.That(newFile.Height).IsEqualTo(oldFile.Height);
+
         // Check pixel content
         var height = oldFile.Height;
         var width = oldFile.Width;
@@ -213,29 +234,29 @@ public class DMIWriteTests
             }
         });
 
-        Assert.Equal(0, pixelDiffs);
+        await Assert.That(pixelDiffs).IsEqualTo(0);
     }
-        
-    [Theory]
-    [InlineData(@"Data/Input/light_64.dmi", @"Data/Output/light_64.dmi")]
-    public void ResavingFileMatchesOriginalImageSingleSprite(string inputPath, string outputPath)
+
+    [Test]
+    [Arguments(@"Data/Input/light_64.dmi", @"Data/Output/light_64.dmi")]
+    public async Task ResavingFileMatchesOriginalImageSingleSprite(string inputPath, string outputPath)
     {
         if (File.Exists(outputPath))
             File.Delete(outputPath);
-            
+
         using (var fs = File.OpenWrite(outputPath))
         using (var originalFile = new DMIFile(inputPath))
             originalFile.Save(fs);
-            
+
         // Check image is equal
         var pixelDiffs = 0;
-        using var oldFile = Image.Load<Rgba32>(inputPath);
-        using var newFile = Image.Load<Rgba32>(outputPath);
-        
+        using var oldFile = await Image.LoadAsync<Rgba32>(inputPath).ConfigureAwait(false);
+        using var newFile = await Image.LoadAsync<Rgba32>(outputPath).ConfigureAwait(false);
+
         // Check overall dimensions
-        Assert.Equal(oldFile.Width, newFile.Width);
-        Assert.Equal(oldFile.Height, newFile.Height);
-                
+        await Assert.That(newFile.Width).IsEqualTo(oldFile.Width);
+        await Assert.That(newFile.Height).IsEqualTo(oldFile.Height);
+
         // Check pixel content
         var height = oldFile.Height;
         var width = oldFile.Width;
@@ -253,7 +274,7 @@ public class DMIWriteTests
             }
         });
 
-        Assert.Equal(0, pixelDiffs);
+        await Assert.That(pixelDiffs).IsEqualTo(0);
     }
 
     private static DMIFile CreateSyntheticFile(bool trueColor, int frameCount = 1)

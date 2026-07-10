@@ -1,12 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
 
 namespace DMISharp.Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net80)]
+[Config(typeof(Net8And10BenchmarkConfig))]
 [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
     Justification = "BenchmarkDotNet invokes GlobalCleanup after benchmark execution.")]
 public class GifConstructionBenchmarks

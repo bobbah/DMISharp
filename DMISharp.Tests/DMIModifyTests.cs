@@ -3,14 +3,15 @@ using System.Linq;
 using DMISharp.Metadata;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
+using System.Threading.Tasks;
+using TUnit.Assertions.Enums;
 
 namespace DMISharp.Tests;
 
-public static class DMIModifyTests
+internal sealed class DMIModifyTests
 {
-    [Fact]
-    public static void ShouldRemoveStateMetadata()
+    [Test]
+    public async Task ShouldRemoveStateMetadata()
     {
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
 
@@ -23,25 +24,25 @@ public static class DMIModifyTests
         stateToRemove.Dispose();
 
         // Assert
-        Assert.True(result);
-        Assert.Equal(mdCount - 1, file.Metadata.States.Count);
+        await Assert.That(result).IsTrue();
+        await Assert.That(file.Metadata.States.Count).IsEqualTo(mdCount - 1);
     }
 
-    [Fact]
-    public static void ShouldDetectValidUnmodifiedDMIState()
+    [Test]
+    public async Task ShouldDetectValidUnmodifiedDMIState()
     {
         // Arrange
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
 
         // Act
         var arrowState = file.States.First(x => x.Name == "arrow");
-            
+
         // Assert
-        Assert.True(arrowState.IsReadyForSave());
+        await Assert.That(arrowState.IsReadyForSave()).IsTrue();
     }
 
-    [Fact]
-    public static void ShouldDetectInvalidDMIStateMissingFrame()
+    [Test]
+    public async Task ShouldDetectInvalidDMIStateMissingFrame()
     {
         // Arrange
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
@@ -49,14 +50,14 @@ public static class DMIModifyTests
         // Act
         var arrowState = file.States.First(x => x.Name == "arrow");
         arrowState.DeleteFrame(0);
-            
+
         // Assert
-        Assert.False(arrowState.IsReadyForSave());
-        Assert.False(file.CanSave());
+        await Assert.That(arrowState.IsReadyForSave()).IsFalse();
+        await Assert.That(file.CanSave()).IsFalse();
     }
 
-    [Fact]
-    public static void ShouldDetectInvalidDMIStateMissingDirection()
+    [Test]
+    public async Task ShouldDetectInvalidDMIStateMissingDirection()
     {
         // Arrange
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
@@ -64,28 +65,28 @@ public static class DMIModifyTests
         // Act
         var arrowState = file.States.First(x => x.Name == "arrow");
         arrowState.SetDirectionDepth(DirectionDepth.Eight);
-            
+
         // Assert
-        Assert.False(arrowState.IsReadyForSave());
-        Assert.False(file.CanSave());
+        await Assert.That(arrowState.IsReadyForSave()).IsFalse();
+        await Assert.That(file.CanSave()).IsFalse();
     }
 
-    [Fact]
+    [Test]
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void StatesShouldReuseReadOnlyView()
+    public async Task StatesShouldReuseReadOnlyView()
     {
         using var file = new DMIFile(1, 1);
         var view = file.States;
 
         file.AddState(new DMIState("state", DirectionDepth.One, 1, 1, 1));
 
-        Assert.Same(view, file.States);
-        Assert.Single(view);
+        await Assert.That(file.States).IsSameReferenceAs(view);
+        await Assert.That(view).HasSingleItem();
     }
 
-    [Fact]
+    [Test]
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void StatesViewShouldRemainLiveAfterSorting()
+    public async Task StatesViewShouldRemainLiveAfterSorting()
     {
         using var file = new DMIFile(1, 1);
         file.AddState(new DMIState("second", DirectionDepth.One, 1, 1, 1));
@@ -94,13 +95,14 @@ public static class DMIModifyTests
 
         file.SortStates();
 
-        Assert.Same(view, file.States);
-        Assert.Equal(new[] { "first", "second" }, view.Select(state => state.Name));
+        await Assert.That(file.States).IsSameReferenceAs(view);
+        await Assert.That(view.Select(state => state.Name))
+            .IsEquivalentTo(new[] { "first", "second" }, CollectionOrdering.Matching);
     }
 
-    [Fact]
+    [Test]
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void ImportStatesShouldPreserveOrderMetadataAndOwnership()
+    public async Task ImportStatesShouldPreserveOrderMetadataAndOwnership()
     {
         using var destination = new DMIFile(1, 1);
         using var source = new DMIFile(1, 1);
@@ -115,17 +117,19 @@ public static class DMIModifyTests
         var added = destination.ImportStates(source);
         source.Dispose();
 
-        Assert.Equal(2, added);
-        Assert.Equal(new[] { existing, first, second }, destination.States);
-        Assert.Equal(destination.States.Select(state => state.Data), destination.Metadata.States);
-        Assert.Empty(source.States);
-        Assert.Empty(source.Metadata.States);
-        Assert.Equal(1, first.TotalFrames);
+        await Assert.That(added).IsEqualTo(2);
+        await Assert.That(destination.States)
+            .IsEquivalentTo(new[] { existing, first, second }, CollectionOrdering.Matching);
+        await Assert.That(destination.Metadata.States)
+            .IsEquivalentTo(destination.States.Select(state => state.Data), CollectionOrdering.Matching);
+        await Assert.That(source.States).IsEmpty();
+        await Assert.That(source.Metadata.States).IsEmpty();
+        await Assert.That(first.TotalFrames).IsEqualTo(1);
     }
 
-    [Fact]
+    [Test]
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void ImportStatesShouldPreserveUnrelatedMetadata()
+    public async Task ImportStatesShouldPreserveUnrelatedMetadata()
     {
         using var destination = new DMIFile(1, 1);
         using var source = new DMIFile(1, 1);
@@ -139,7 +143,9 @@ public static class DMIModifyTests
 
         destination.ImportStates(source);
 
-        Assert.Equal(new[] { unrelated }, source.Metadata.States);
-        Assert.Equal(new[] { first.Data, second.Data }, destination.Metadata.States);
+        await Assert.That(source.Metadata.States)
+            .IsEquivalentTo(new[] { unrelated }, CollectionOrdering.Matching);
+        await Assert.That(destination.Metadata.States)
+            .IsEquivalentTo(new[] { first.Data, second.Data }, CollectionOrdering.Matching);
     }
 }

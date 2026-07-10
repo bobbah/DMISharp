@@ -4,7 +4,7 @@
 DMISharp
 </h1>
 
-### **DMISharp** is a .NET 8.0 library for easily interacting with the BYOND DMI file format.
+### **DMISharp** is a .NET library targeting .NET 8 and .NET 10 for easily interacting with the BYOND DMI file format.
 
 Developed with ease-of-use in mind, this library provides a simple means for importing, modifying, and exporting DMI files. Internally, images are handled using [ImageSharp](https://github.com/SixLabors/ImageSharp), a fantastic open-source library from SixLabors.
 
@@ -85,7 +85,14 @@ newDMI.States.First().SetFrameCount(10);
 newDMI.Save(@"Data/Output/minecraft.dmi");
 ```
 
+### Development
+
+The test suite uses [TUnit](https://tunit.dev/) and runs on both supported target frameworks:
+
+```shell
+dotnet test --project DMISharp.Tests/DMISharp.Tests.csproj
+```
 
 ### Questions?
 
-Feel free to contact me on Discord at `@bobbahbrown` with any questions or concerns. Additionally, I can be found in the [/tg/station discord server](https://tgstation13.org/phpBB/viewforum.php?f=60).
+Feel free to contact me on Discord at `@bobbahbee` with any questions or concerns. Additionally, I can be found in the [/tg/station discord server](https://tgstation13.org/phpBB/viewforum.php?f=60).

@@ -2,14 +2,14 @@ using System;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
+using System.Threading.Tasks;
 
 namespace DMISharp.Tests;
 
-public sealed class DMIAnimationTests
+internal sealed class DMIAnimationTests
 {
-    [Fact]
-    public void GetAnimatedCopiesFramesAndMetadataWithoutMutatingSources()
+    [Test]
+    public async Task GetAnimatedCopiesFramesAndMetadataWithoutMutatingSources()
     {
         using var state = new DMIState("animated", DirectionDepth.One, 2, 3, 1);
 #pragma warning disable CA2000
@@ -34,31 +34,30 @@ public sealed class DMIAnimationTests
 
         using var animation = state.GetAnimated(StateDirection.South);
 
-        Assert.Equal(2, animation.Frames.Count);
-        Assert.Equal(default, animation.Frames[0][0, 0]);
-        Assert.Equal(new Rgba32(40, 50, 60, 128), animation.Frames[0][1, 0]);
-        Assert.Equal(new Rgba32(70, 80, 90, 255), animation.Frames[0][2, 0]);
+        await Assert.That(animation.Frames.Count).IsEqualTo(2);
+        await Assert.That(animation.Frames[0][0, 0]).IsEqualTo(default);
+        await Assert.That(animation.Frames[0][1, 0]).IsEqualTo(new Rgba32(40, 50, 60, 128));
+        await Assert.That(animation.Frames[0][2, 0]).IsEqualTo(new Rgba32(70, 80, 90, 255));
 
         var gifMetadata = animation.Metadata.GetFormatMetadata(GifFormat.Instance);
-        Assert.Equal(GifColorTableMode.Local, gifMetadata.ColorTableMode);
-        Assert.Equal(3, gifMetadata.RepeatCount);
-        Assert.Equal(15, animation.Frames[0].Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay);
-        Assert.Equal(25, animation.Frames[1].Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay);
+        await Assert.That(gifMetadata.ColorTableMode).IsEqualTo(GifColorTableMode.Local);
+        await Assert.That(gifMetadata.RepeatCount).IsEqualTo((ushort)3);
+        await Assert.That(animation.Frames[0].Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay).IsEqualTo(15);
+        await Assert.That(animation.Frames[1].Metadata.GetFormatMetadata(GifFormat.Instance).FrameDelay).IsEqualTo(25);
         foreach (var frame in animation.Frames)
         {
-            Assert.Equal(GifDisposalMethod.RestoreToBackground,
-                frame.Metadata.GetFormatMetadata(GifFormat.Instance).DisposalMethod);
+            await Assert.That(frame.Metadata.GetFormatMetadata(GifFormat.Instance).DisposalMethod).IsEqualTo(GifDisposalMethod.RestoreToBackground);
         }
 
-        Assert.Equal(new Rgba32(10, 20, 30, 0), first[0, 0]);
-        Assert.Equal(99, firstSourceMetadata.FrameDelay);
-        Assert.Equal(GifDisposalMethod.NotDispose, firstSourceMetadata.DisposalMethod);
-        Assert.Equal(98, secondSourceMetadata.FrameDelay);
-        Assert.Equal(GifDisposalMethod.RestoreToPrevious, secondSourceMetadata.DisposalMethod);
+        await Assert.That(first[0, 0]).IsEqualTo(new Rgba32(10, 20, 30, 0));
+        await Assert.That(firstSourceMetadata.FrameDelay).IsEqualTo(99);
+        await Assert.That(firstSourceMetadata.DisposalMethod).IsEqualTo(GifDisposalMethod.NotDispose);
+        await Assert.That(secondSourceMetadata.FrameDelay).IsEqualTo(98);
+        await Assert.That(secondSourceMetadata.DisposalMethod).IsEqualTo(GifDisposalMethod.RestoreToPrevious);
     }
 
-    [Fact]
-    public void GetAnimatedMissingFrameDoesNotMutateEarlierFrames()
+    [Test]
+    public async Task GetAnimatedMissingFrameDoesNotMutateEarlierFrames()
     {
         using var state = new DMIState("incomplete", DirectionDepth.One, 2, 1, 1);
 #pragma warning disable CA2000
@@ -71,8 +70,8 @@ public sealed class DMIAnimationTests
         state.InitializeDelay();
 
         Assert.Throws<InvalidOperationException>(() => state.GetAnimated(StateDirection.South));
-        Assert.Equal(new Rgba32(10, 20, 30, 0), first[0, 0]);
-        Assert.Equal(99, sourceMetadata.FrameDelay);
-        Assert.Equal(GifDisposalMethod.NotDispose, sourceMetadata.DisposalMethod);
+        await Assert.That(first[0, 0]).IsEqualTo(new Rgba32(10, 20, 30, 0));
+        await Assert.That(sourceMetadata.FrameDelay).IsEqualTo(99);
+        await Assert.That(sourceMetadata.DisposalMethod).IsEqualTo(GifDisposalMethod.NotDispose);
     }
 }

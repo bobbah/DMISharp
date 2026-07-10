@@ -3,56 +3,55 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
 
 namespace DMISharp.Tests;
 
-public class DMIReadTests
+internal sealed class DMIReadTests
 {
-    [Fact]
-    public void AnimalDMIStateCount()
+    [Test]
+    public async Task AnimalDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
-        Assert.Equal(154, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(154);
     }
 
-    [Fact]
-    public void AirMeterDMIStateCount()
+    [Test]
+    public async Task AirMeterDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/air_meter.dmi");
-        Assert.Equal(16, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(16);
     }
 
-    [Fact]
-    public void AtmosTestingDMIStateCount()
+    [Test]
+    public async Task AtmosTestingDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/atmos_testing.dmi");
-        Assert.Equal(5, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(5);
     }
 
-    [Fact]
-    public void LightingDMIStateCount()
+    [Test]
+    public async Task LightingDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/lighting.dmi");
-        Assert.Equal(3, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(3);
     }
 
-    [Fact]
-    public void TurfAnalysisDMIStateCount()
+    [Test]
+    public async Task TurfAnalysisDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/turf_analysis.dmi");
-        Assert.Equal(16, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(16);
     }
 
-    [Fact]
-    public void SpaceDragonDMIStateCount()
+    [Test]
+    public async Task SpaceDragonDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/spacedragon.dmi");
-        Assert.Equal(2, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(2);
     }
 
-    [Fact]
-    public void CanReadDirectionDepth()
+    [Test]
+    public async Task CanReadDirectionDepth()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
 
@@ -62,32 +61,32 @@ public class DMIReadTests
         var rareFrogDead = file.States.First(x => x.Name == "rare_frog_dead");
 
         // Assert
-        Assert.Equal(DirectionDepth.Four, bat.DirectionDepth);
-        Assert.Equal(DirectionDepth.Four, carp.DirectionDepth);
-        Assert.Equal(DirectionDepth.One, rareFrogDead.DirectionDepth);
+        await Assert.That(bat.DirectionDepth).IsEqualTo(DirectionDepth.Four);
+        await Assert.That(carp.DirectionDepth).IsEqualTo(DirectionDepth.Four);
+        await Assert.That(rareFrogDead.DirectionDepth).IsEqualTo(DirectionDepth.One);
     }
 
-    [Fact]
-    public void GoonTurfAnalysisDMIStateCount()
+    [Test]
+    public async Task GoonTurfAnalysisDMIStateCount()
     {
         using var file = new DMIFile(@"Data/Input/turf_analysis_goon.dmi");
-        Assert.Equal(16, file.States.Count);
+        await Assert.That(file.States.Count).IsEqualTo(16);
     }
 
-    [Fact]
-    public void CanReadFromNonSeekableStream()
+    [Test]
+    public async Task CanReadFromNonSeekableStream()
     {
         var stream = new NonSeekableReadStream(File.OpenRead(@"Data/Input/animal.dmi"));
 
         using var file = new DMIFile(stream);
 
-        Assert.Equal(154, file.States.Count);
-        Assert.True(stream.IsDisposed);
-        Assert.NotNull(file.States.First().GetFrame(0));
+        await Assert.That(file.States.Count).IsEqualTo(154);
+        await Assert.That(stream.IsDisposed).IsTrue();
+        await Assert.That(file.States.First().GetFrame(0)).IsNotNull();
     }
 
-    [Fact]
-    public void LoadedFramesRemainIndependentlyMutable()
+    [Test]
+    public async Task LoadedFramesRemainIndependentlyMutable()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
         var state = file.States.First(x => x.Name == "mushroom");
@@ -98,29 +97,29 @@ public class DMIReadTests
 
         first[0, 0] = replacement;
 
-        Assert.Equal(replacement, first[0, 0]);
-        Assert.Equal(secondPixel, second[0, 0]);
-        Assert.Same(first, state.GetFrame(StateDirection.South, 0));
+        await Assert.That(first[0, 0]).IsEqualTo(replacement);
+        await Assert.That(second[0, 0]).IsEqualTo(secondPixel);
+        await Assert.That(state.GetFrame(StateDirection.South, 0)).IsSameReferenceAs(first);
     }
 
-    [Fact]
-    public void RemovedStateRetainsUnmaterializedFrames()
+    [Test]
+    public async Task RemovedStateRetainsUnmaterializedFrames()
     {
         DMIState state;
         using (var file = new DMIFile(@"Data/Input/turf_analysis.dmi"))
         {
             state = file.States.Last();
-            Assert.True(file.RemoveState(state));
+            await Assert.That(file.RemoveState(state)).IsTrue();
         }
 
         using (state)
         {
-            Assert.NotNull(state.GetFrame(0));
+            await Assert.That(state.GetFrame(0)).IsNotNull();
         }
     }
 
-    [Fact]
-    public void ConcurrentFrameReadsReturnSameOwnedImage()
+    [Test]
+    public async Task ConcurrentFrameReadsReturnSameOwnedImage()
     {
         using var file = new DMIFile(@"Data/Input/animal.dmi");
         var state = file.States.First(x => x.Name == "mushroom");
@@ -128,7 +127,8 @@ public class DMIReadTests
 
         Parallel.For(0, frames.Length, i => frames[i] = state.GetFrame(StateDirection.South, 0)!);
 
-        Assert.All(frames, frame => Assert.Same(frames[0], frame));
+        foreach (var frame in frames)
+            await Assert.That(frame).IsSameReferenceAs(frames[0]);
     }
 
     private sealed class NonSeekableReadStream : Stream

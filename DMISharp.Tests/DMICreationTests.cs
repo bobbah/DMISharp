@@ -2,13 +2,13 @@
 using System.Linq;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
+using System.Threading.Tasks;
 
 namespace DMISharp.Tests;
 
-public class DMICreationTests
+internal sealed class DMICreationTests
 {
-    [Fact]
+    [Test]
     public void CanMergeDMI()
     {
         using var newDMI = new DMIFile(32, 32);
@@ -22,7 +22,7 @@ public class DMICreationTests
         newDMI.Save(@"Data/Output/merged.dmi");
     }
 
-    [Fact]
+    [Test]
     public void CanCreateDMIFromImages()
     {
         using var newDMI = new DMIFile(32, 32);
@@ -41,13 +41,13 @@ public class DMICreationTests
         newDMI.Save(@"Data/Output/minecraft.dmi");
     }
 
-    [Fact]
-    public void CanChangeDMIDepths()
+    [Test]
+    public async Task CanChangeDMIDepths()
     {
         using var newDMI = new DMIFile(32, 32);
 
         // Create state
-        var img = Image.Load<Rgba32>($@"Data/Input/SourceImages/steve32.png");
+        var img = await Image.LoadAsync<Rgba32>($@"Data/Input/SourceImages/steve32.png").ConfigureAwait(false);
 #pragma warning disable CA2000
         var newState = new DMIState("steve32", DirectionDepth.One, 1, 32, 32);
 #pragma warning restore CA2000
@@ -59,10 +59,10 @@ public class DMICreationTests
         newDMI.States.First().SetFrameCount(10);
 
         // Check new states
-        Assert.Equal(DirectionDepth.Four, newDMI.States.First().DirectionDepth);
-        Assert.Equal(10, newDMI.States.First().Frames);
+        await Assert.That(newDMI.States.First().DirectionDepth).IsEqualTo(DirectionDepth.Four);
+        await Assert.That(newDMI.States.First().Frames).IsEqualTo(10);
 
         // Cannot save
-        Assert.False(newDMI.CanSave());
+        await Assert.That(newDMI.CanSave()).IsFalse();
     }
 }

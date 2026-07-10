@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <AnalysisMode>All</AnalysisMode>
-    <AnalysisLevel>6.0</AnalysisLevel>
+    <AnalysisLevel>10.0</AnalysisLevel>
     <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
