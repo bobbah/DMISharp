@@ -95,4 +95,4 @@ dotnet test --project DMISharp.Tests/DMISharp.Tests.csproj
 
 ### Questions?
 
-Feel free to contact me on Discord at `@bobbahbrown` with any questions or concerns. Additionally, I can be found in the [/tg/station discord server](https://tgstation13.org/phpBB/viewforum.php?f=60).
+Feel free to contact me on Discord at `@bobbahbee` with any questions or concerns. Additionally, I can be found in the [/tg/station discord server](https://tgstation13.org/phpBB/viewforum.php?f=60).
